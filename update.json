@@ -1,10 +1,10 @@
 {
-  "version": "1.0.0",
-  "download_url": "https://raw.githubusercontent.com/kofiboy360/ymlk-store-manager/main/dist/ymlk-store-manager-1.0.0.zip",
+  "version": "1.0.1",
+  "download_url": "https://raw.githubusercontent.com/kofiboy360/ymlk-store-manager/main/dist/ymlk-store-manager-1.0.1.zip",
   "homepage": "https://ymlktechnologies.com",
   "requires": "6.2",
   "tested": "7.1",
   "requires_php": "7.4",
   "released": "2026-11-22",
-  "changelog": "<h4>1.0.0</h4><ul><li>First release.</li></ul>"
+  "changelog": "<h4>1.0.1</h4><ul><li>Inventory lists each product once, with a stock grid for its sizes and colours.</li><li>Fixed button colours on hover.</li></ul><h4>1.0.0</h4><ul><li>First release.</li></ul>"
 }

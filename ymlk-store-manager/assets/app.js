@@ -779,51 +779,130 @@
 	/* ---------------------------------------------------------- inventory */
 	function inventory() {
 		title('Inventory');
-		var s = state.inv, my = seq;
+		var s = state.inv, my = seq, threshold = C.lowStock || 2, items = {}, open = s.open || {};
+		s.open = open;
 		view.innerHTML =
 			'<div class="ysm-toolbar"><label class="ysm-search">' + icon('search') + '<input type="search" id="i-search" placeholder="Search products" value="' + esc(s.search) + '"></label></div>' +
 			'<div class="ysm-tabs">' + [['all', 'Everything'], ['low', 'Running low'], ['out', 'Out of stock']].map(function (t) { return '<button class="ysm-tab' + (s.filter === t[0] ? ' is-on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
-			'<div class="ysm-card ysm-card-flush" id="i-list">' + spinner('Loading stock…') + '</div>';
+			'<div class="ysm-card ysm-card-flush" id="i-list">' + spinner('Loading stock…') + '</div>' +
+			'<p class="ysm-hint">Empty stock (∞) means it isn’t counted and is always available. 0 means sold out.</p>';
 		$('#i-search').addEventListener('input', debounce(function () { s.search = this.value.trim(); s.page = 1; load(); }, 400));
-		var threshold = C.lowStock || 2;
-		function row(x) {
-			var lvl = x.status === 'outofstock' || (x.manage && x.stock <= 0) ? 'out' : (x.manage && x.stock <= threshold ? 'low' : '');
-			return '<li data-id="' + x.id + '" class="' + (lvl ? 'is-' + lvl : '') + '"><a href="#/products/' + (x.parentId || x.id) + '" class="ysm-inv-name">' + thumb(x.image) + '<span class="ysm-grow"><strong>' + esc(x.name) + '</strong>' + (x.variant ? '<small>' + esc(x.variant) + '</small>' : '') + (x.sku ? '<small>SKU ' + esc(x.sku) + '</small>' : '') + '</span></a>' +
-				(x.manage ? '<div class="ysm-stepper"><button data-delta="-1" aria-label="One less">' + icon('minus') + '</button><input inputmode="numeric" value="' + esc(x.stock) + '" data-stock><button data-delta="1" aria-label="One more">' + icon('plus') + '</button></div>' :
-					'<div class="ysm-untracked"><span class="ysm-badge ' + (x.status === 'outofstock' ? 'ysm-st-cancelled">Out of stock' : 'ysm-st-completed">Available') + '</span><button class="ysm-link ysm-link-sm" data-track>Count stock</button></div>') + '</li>';
+
+		function level(x) {
+			if (x.status === 'outofstock' || (x.manage && x.stock <= 0)) return 'out';
+			if (x.manage && x.stock <= threshold) return 'low';
+			return '';
 		}
-		function send(li, body) {
-			li.classList.add('is-busy');
-			body.id = +li.getAttribute('data-id');
+		function summary(p) {
+			if (p.type !== 'variable') {
+				var l = level(p);
+				return p.manage ? (l === 'out' ? 'Sold out' : p.stock + ' in stock') : (p.status === 'outofstock' ? 'Sold out' : 'Not counted · always available');
+			}
+			var v = p.variations, total = 0, counted = 0, low = 0, out = 0;
+			v.forEach(function (x) { if (!x.enabled) return; var l = level(x); if (x.manage) { counted++; total += Math.max(0, +x.stock || 0); } if (l === 'low') low++; if (l === 'out') out++; });
+			var txt = v.length + ' option' + (v.length === 1 ? '' : 's') + ' · ' + (counted ? total + ' in stock' : 'not counted');
+			return { text: txt, low: low, out: out };
+		}
+		function row(p) {
+			var l = p.type === 'variable' ? '' : level(p), sm = summary(p), isOpen = !!open[p.id];
+			var right, sub;
+			if (p.type === 'variable') {
+				sub = esc(sm.text);
+				right = '<div class="ysm-inv-badges">' + (sm.out ? '<span class="ysm-badge ysm-st-cancelled">' + sm.out + ' sold out</span>' : '') + (sm.low ? '<span class="ysm-badge ysm-st-on-hold">' + sm.low + ' low</span>' : '') + (!sm.out && !sm.low ? '<span class="ysm-badge ysm-st-processing">OK</span>' : '') + '</div><span class="ysm-chev' + (isOpen ? ' is-open' : '') + '">' + icon('next') + '</span>';
+			} else {
+				sub = esc(sm);
+				right = p.manage ? stepper(p) : '<button class="ysm-btn ysm-btn-sm" data-track="' + p.id + '">Count stock</button>';
+			}
+			return '<li class="ysm-invp' + (l ? ' is-' + l : '') + (isOpen ? ' is-open' : '') + '" data-pid="' + p.id + '">' +
+				'<div class="ysm-invp-head"' + (p.type === 'variable' ? ' data-toggle="' + p.id + '" role="button" tabindex="0"' : '') + '>' + thumb(p.image, 'ysm-thumb ysm-thumb-lg') +
+				'<span class="ysm-grow"><strong>' + esc(p.name) + '</strong><small>' + sub + '</small></span>' + right + '</div>' +
+				(p.type === 'variable' && isOpen ? panel(p) : '') + '</li>';
+		}
+		function stepper(x) {
+			return '<div class="ysm-stepper" data-vid="' + x.id + '"><button data-delta="-1" aria-label="One less">' + icon('minus') + '</button><input inputmode="numeric" value="' + esc(x.stock) + '" data-stock="' + x.id + '"><button data-delta="1" aria-label="One more">' + icon('plus') + '</button></div>';
+		}
+		function cell(x) {
+			if (!x) return '<td class="is-none">—</td>';
+			var l = level(x);
+			return '<td class="' + (l ? 'is-' + l : '') + (x.enabled ? '' : ' is-disabled') + '"><input inputmode="numeric" data-cell="' + x.id + '" value="' + esc(x.manage ? x.stock : '') + '" placeholder="∞" title="' + esc(x.label) + (x.enabled ? '' : ' (switched off)') + '"></td>';
+		}
+		function panel(p) {
+			var o = p.options, html = '<div class="ysm-invp-panel">';
+			if (o.length === 2) {
+				// Rows = the option that isn't "size"; columns = sizes (or the second option).
+				var ci = /size/i.test(o[0].name) && !/size/i.test(o[1].name) ? 0 : 1, rows = o[1 - ci], cols = o[ci];
+				var find = function (rv, cv) { return p.variations.filter(function (x) { return x.attrs[rows.key] === rv && x.attrs[cols.key] === cv; })[0]; };
+				html += '<div class="ysm-matrix-wrap"><table class="ysm-matrix"><thead><tr><th>' + esc(rows.name) + ' \\ ' + esc(cols.name) + '</th>' + cols.values.map(function (c) { return '<th>' + esc(c.name) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+					rows.values.map(function (rv) { return '<tr><th>' + esc(rv.name) + '</th>' + cols.values.map(function (cv) { return cell(find(rv.slug, cv.slug)); }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+			} else {
+				html += '<table class="ysm-matrix ysm-matrix-list"><tbody>' + p.variations.map(function (x) { return '<tr><th>' + esc(x.label || ('#' + x.id)) + '</th>' + cell(x) + '</tr>'; }).join('') + '</tbody></table>';
+			}
+			html += '<div class="ysm-invp-actions"><span>Set every option to</span><input class="ysm-input ysm-input-sm" inputmode="numeric" data-all="' + p.id + '" placeholder="e.g. 5"><button class="ysm-btn ysm-btn-sm" data-applyall="' + p.id + '">Apply</button><a class="ysm-link" href="#/products/' + p.id + '">Edit product</a></div></div>';
+			return html;
+		}
+		function redraw(pid) {
+			var li = $('li[data-pid="' + pid + '"]', view); if (!li) return;
+			var n = document.createElement('div'); n.innerHTML = row(items[pid]); li.replaceWith(n.firstChild);
+		}
+		function findItem(id) {
+			if (items[id]) return { p: items[id], x: items[id] };
+			for (var k in items) { var v = (items[k].variations || []).filter(function (x) { return x.id === id; })[0]; if (v) return { p: items[k], x: v }; }
+			return null;
+		}
+		function send(id, body, el) {
+			var f = findItem(id); if (!f) return Promise.resolve();
+			if (el) el.classList.add('is-busy');
+			body.id = id;
 			return api('/stock', { method: 'POST', body: body }).then(function (r) {
-				li.classList.remove('is-busy');
-				var x = li._x; x.stock = r.stock; x.manage = r.manage; x.status = r.status;
-				var n = document.createElement('div'); n.innerHTML = row(x); var nl = n.firstChild; nl._x = x; li.replaceWith(nl);
-			}).catch(function (e) { li.classList.remove('is-busy'); toast(e.message, 'error'); });
+				f.x.stock = r.stock; f.x.manage = r.manage; f.x.status = r.status;
+				redraw(f.p.id);
+			}).catch(function (e) { if (el) el.classList.remove('is-busy'); toast(e.message, 'error'); redraw(f.p.id); });
 		}
+		function toggle(pid) { open[pid] = !open[pid]; redraw(pid); }
+
 		view.onclick = function (e) {
 			var t = e.target.closest('[data-tab]');
 			if (t) { s.filter = t.getAttribute('data-tab'); s.page = 1; $$('.ysm-tab', view).forEach(function (b) { b.classList.toggle('is-on', b === t); }); load(); return; }
 			var p = e.target.closest('[data-page]');
 			if (p && !p.disabled) { s.page = +p.getAttribute('data-page'); load(); window.scrollTo(0, 0); return; }
 			var d = e.target.closest('[data-delta]');
-			if (d) { var li = d.closest('li'); if (+d.getAttribute('data-delta') < 0 && +li._x.stock <= 0) return; send(li, { delta: +d.getAttribute('data-delta') }); return; }
-			if (e.target.closest('[data-track]')) { send(e.target.closest('li'), { stock: 0 }); }
+			if (d) { var st = d.closest('[data-vid]'), id = +st.getAttribute('data-vid'), f = findItem(id); if (+d.getAttribute('data-delta') < 0 && +f.x.stock <= 0) return; send(id, { delta: +d.getAttribute('data-delta') }, st); return; }
+			var tr = e.target.closest('[data-track]');
+			if (tr) { send(+tr.getAttribute('data-track'), { stock: 0 }, tr); return; }
+			var ap = e.target.closest('[data-applyall]');
+			if (ap) {
+				var pid = +ap.getAttribute('data-applyall'), v = $('[data-all="' + pid + '"]', view).value.trim();
+				if (!/^\d*$/.test(v)) { toast('Enter a whole number, or leave empty to stop counting.', 'error'); return; }
+				ap.disabled = true;
+				var list = items[pid].variations;
+				list.reduce(function (pr, x) { return pr.then(function () { return api('/stock', { method: 'POST', body: { id: x.id, stock: v } }).then(function (r) { x.stock = r.stock; x.manage = r.manage; x.status = r.status; }); }); }, Promise.resolve())
+					.then(function () { redraw(pid); toast(v === '' ? 'Stock counting turned off for every option' : 'Every option set to ' + v); })
+					.catch(function (er) { redraw(pid); toast(er.message, 'error'); });
+				return;
+			}
+			if (e.target.closest('a, input, button')) return;
+			var tg = e.target.closest('[data-toggle]');
+			if (tg) toggle(+tg.getAttribute('data-toggle'));
+		};
+		view.onkeydown = function (e) {
+			if (e.key === 'Enter' && e.target.matches('[data-stock],[data-cell]')) { e.preventDefault(); e.target.blur(); }
+			if ((e.key === 'Enter' || e.key === ' ') && e.target.hasAttribute('data-toggle')) { e.preventDefault(); toggle(+e.target.getAttribute('data-toggle')); }
 		};
 		view.onchange = function (e) {
-			if (!e.target.hasAttribute('data-stock')) return;
-			var v = e.target.value.trim();
-			if (!/^\d+$/.test(v)) { toast('Enter a whole number.', 'error'); e.target.value = e.target.closest('li')._x.stock; return; }
-			send(e.target.closest('li'), { stock: +v });
+			var t = e.target, id = +(t.getAttribute('data-stock') || t.getAttribute('data-cell') || 0);
+			if (!id) return;
+			var v = t.value.trim();
+			if (t.hasAttribute('data-stock') && !/^\d+$/.test(v)) { toast('Enter a whole number.', 'error'); t.value = findItem(id).x.stock; return; }
+			if (!/^\d*$/.test(v)) { toast('Enter a whole number, or leave empty for “always available”.', 'error'); var f = findItem(id); t.value = f.x.manage ? f.x.stock : ''; return; }
+			send(id, { stock: v }, t.closest('td') || t.closest('[data-vid]'));
 		};
-		view.onkeydown = function (e) { if (e.key === 'Enter' && e.target.hasAttribute('data-stock')) e.target.blur(); };
 		function load() {
 			var box = $('#i-list'); box.innerHTML = spinner('Loading stock…');
 			api('/inventory', { query: { filter: s.filter, page: s.page, search: s.search } }).then(function (d) {
 				if (!current(my)) return;
 				threshold = d.threshold;
-				box.innerHTML = (d.items.length ? '<ul class="ysm-inv">' + d.items.map(row).join('') + '</ul>' : empty(s.filter === 'all' ? 'Nothing found' : (s.filter === 'low' ? 'Nothing is running low' : 'Nothing is out of stock'), s.filter === 'low' ? 'Items show here when their stock is ' + d.threshold + ' or less.' : '')) + pager(s.page, d.pages, d.total, d.total === 1 ? 'item' : 'items');
-				$$('.ysm-inv > li', box).forEach(function (li, i) { li._x = d.items[i]; });
+				d.items.forEach(function (p) { items[p.id] = p; if (s.filter !== 'all' && p.type === 'variable' && open[p.id] === undefined) open[p.id] = true; });
+				box.innerHTML = (d.items.length ? '<ul class="ysm-inv">' + d.items.map(row).join('') + '</ul>' : empty(s.filter === 'all' ? 'Nothing found' : (s.filter === 'low' ? 'Nothing is running low' : 'Nothing is out of stock'), s.filter === 'low' ? 'Products show here when stock is ' + d.threshold + ' or less.' : '')) + pager(s.page, d.pages, d.total, d.total === 1 ? 'product' : 'products');
 			}).catch(function (e) { if (current(my)) box.innerHTML = empty('Could not load stock', e.message); });
 		}
 		load();

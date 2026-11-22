@@ -774,45 +774,84 @@ final class YSM_REST {
 	public static function inventory( WP_REST_Request $r ) {
 		global $wpdb;
 		$filter    = in_array( $r['filter'], array( 'low', 'out' ), true ) ? $r['filter'] : 'all';
-		$page      = max( 1, (int) $r['page'] );
-		$per       = 30;
 		$threshold = (int) get_option( 'woocommerce_notify_low_stock_amount', 2 );
-		$search    = trim( (string) $r['search'] );
-
-		// Sellable items = simple products + variations of variable products (not the variable parents).
-		$where = "p.post_status IN ('publish','private','draft') AND ( (p.post_type='product' AND NOT EXISTS (SELECT 1 FROM {$wpdb->term_relationships} tr JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id=tr.term_taxonomy_id JOIN {$wpdb->terms} t ON t.term_id=tt.term_id WHERE tr.object_id=p.ID AND tt.taxonomy='product_type' AND t.slug <> 'simple')) OR (p.post_type='product_variation' AND EXISTS (SELECT 1 FROM {$wpdb->posts} pp WHERE pp.ID=p.post_parent AND pp.post_status IN ('publish','private','draft'))) )";
-		$join  = "LEFT JOIN {$wpdb->postmeta} ss ON ss.post_id=p.ID AND ss.meta_key='_stock_status' LEFT JOIN {$wpdb->postmeta} st ON st.post_id=p.ID AND st.meta_key='_stock' LEFT JOIN {$wpdb->postmeta} ms ON ms.post_id=p.ID AND ms.meta_key='_manage_stock'";
-		if ( 'out' === $filter ) {
-			$where .= " AND ss.meta_value='outofstock'";
-		} elseif ( 'low' === $filter ) {
-			$where .= $wpdb->prepare( " AND ms.meta_value='yes' AND CAST(st.meta_value AS SIGNED) <= %d", $threshold );
+		$args      = array(
+			'limit'    => 20,
+			'page'     => max( 1, (int) $r['page'] ),
+			'paginate' => true,
+			'status'   => array( 'publish', 'private', 'draft' ),
+			'type'     => array( 'simple', 'variable' ),
+			'orderby'  => 'title',
+			'order'    => 'ASC',
+		);
+		if ( '' !== trim( (string) $r['search'] ) ) {
+			$args['s'] = sanitize_text_field( $r['search'] );
 		}
-		if ( '' !== $search ) {
-			$like   = '%' . $wpdb->esc_like( $search ) . '%';
-			$where .= $wpdb->prepare( " AND (p.post_title LIKE %s OR EXISTS (SELECT 1 FROM {$wpdb->posts} pp WHERE pp.ID=p.post_parent AND pp.post_title LIKE %s))", $like, $like );
+		// "Running low" / "Out of stock": products where the product itself or any of its options matches.
+		if ( 'all' !== $filter ) {
+			$cond = 'out' === $filter
+				? "ss.meta_value='outofstock'"
+				: $wpdb->prepare( "ms.meta_value='yes' AND CAST(st.meta_value AS SIGNED) <= %d", $threshold );
+			$ids  = $wpdb->get_col( "SELECT DISTINCT IF(p.post_type='product_variation', p.post_parent, p.ID) FROM {$wpdb->posts} p LEFT JOIN {$wpdb->postmeta} ss ON ss.post_id=p.ID AND ss.meta_key='_stock_status' LEFT JOIN {$wpdb->postmeta} st ON st.post_id=p.ID AND st.meta_key='_stock' LEFT JOIN {$wpdb->postmeta} ms ON ms.post_id=p.ID AND ms.meta_key='_manage_stock' WHERE p.post_type IN ('product','product_variation') AND p.post_status IN ('publish','private','draft') AND {$cond}" ); // phpcs:ignore
+			$args['include'] = $ids ? array_map( 'intval', $ids ) : array( 0 );
 		}
-		$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} p {$join} WHERE {$where}" ); // phpcs:ignore
-		$ids   = $wpdb->get_col( $wpdb->prepare( "SELECT p.ID FROM {$wpdb->posts} p {$join} WHERE {$where} ORDER BY COALESCE(NULLIF(p.post_parent,0),p.ID) DESC, p.menu_order ASC, p.ID ASC LIMIT %d OFFSET %d", $per, ( $page - 1 ) * $per ) ); // phpcs:ignore
+		$res   = wc_get_products( $args );
 		$items = array();
-		foreach ( $ids as $id ) {
-			$x = wc_get_product( (int) $id );
-			if ( ! $x ) {
-				continue;
-			}
-			$variant = $x->is_type( 'variation' );
-			$items[] = array(
-				'id'       => $x->get_id(),
-				'parentId' => $x->get_parent_id(),
-				'name'     => $variant ? get_the_title( $x->get_parent_id() ) : $x->get_name(),
-				'variant'  => $variant ? wc_get_formatted_variation( $x, true, false, false ) : '',
-				'sku'      => $x->get_sku(),
-				'manage'   => $x->get_manage_stock(),
-				'stock'    => $x->get_stock_quantity(),
-				'status'   => $x->get_stock_status(),
-				'image'    => self::thumb( $x->get_image_id() ? $x->get_image_id() : ( $variant ? get_post_thumbnail_id( $x->get_parent_id() ) : 0 ) ),
+		foreach ( $res->products as $p ) {
+			$item = array(
+				'id'     => $p->get_id(),
+				'name'   => $p->get_name(),
+				'type'   => $p->get_type(),
+				'image'  => self::thumb( $p->get_image_id() ),
+				'sku'    => $p->get_sku(),
+				'manage' => $p->get_manage_stock(),
+				'stock'  => $p->get_stock_quantity(),
+				'status' => $p->get_stock_status(),
 			);
+			if ( $p->is_type( 'variable' ) ) {
+				$opts = array();
+				foreach ( $p->get_attributes() as $tax => $attr ) {
+					if ( ! $attr->get_variation() ) {
+						continue;
+					}
+					$values = array();
+					if ( $attr->is_taxonomy() ) {
+						foreach ( wc_get_product_terms( $p->get_id(), $tax, array( 'fields' => 'all' ) ) as $t ) {
+							$values[] = array( 'slug' => $t->slug, 'name' => $t->name );
+						}
+					} else {
+						foreach ( $attr->get_options() as $o ) {
+							$values[] = array( 'slug' => $o, 'name' => $o );
+						}
+					}
+					$opts[] = array( 'key' => sanitize_title( $tax ), 'name' => wc_attribute_label( $tax, $p ), 'values' => $values );
+				}
+				$vars = array();
+				foreach ( $p->get_children() as $cid ) {
+					$v = wc_get_product( $cid );
+					if ( ! $v ) {
+						continue;
+					}
+					$a = array();
+					foreach ( $v->get_attributes() as $k => $val ) {
+						$a[ sanitize_title( $k ) ] = $val;
+					}
+					$vars[] = array(
+						'id'      => $v->get_id(),
+						'attrs'   => $a,
+						'label'   => wc_get_formatted_variation( $v, true, false, false ),
+						'manage'  => $v->get_manage_stock(),
+						'stock'   => $v->get_stock_quantity(),
+						'status'  => $v->get_stock_status(),
+						'enabled' => 'publish' === $v->get_status(),
+					);
+				}
+				$item['options']    = $opts;
+				$item['variations'] = $vars;
+			}
+			$items[] = $item;
 		}
-		return rest_ensure_response( array( 'items' => $items, 'total' => $total, 'pages' => (int) ceil( $total / $per ), 'threshold' => $threshold ) );
+		return rest_ensure_response( array( 'items' => $items, 'total' => (int) $res->total, 'pages' => (int) $res->max_num_pages, 'threshold' => $threshold ) );
 	}
 
 	public static function stock_set( WP_REST_Request $r ) {
