@@ -1144,7 +1144,7 @@
 		if (amt > 0) parts.push(c.type === 'percent' ? amt + '% off' : (c.type === 'fixed_product' ? money(amt) + ' off each item' : money(amt) + ' off'));
 		if (c.freeShip) parts.push(parts.length ? 'free delivery' : 'Free delivery');
 		var txt = parts.join(' + ') || 'No discount set yet';
-		if (c.minimum !== '' && c.minimum != null && Number(c.minimum) > 0) txt += ' on orders of ' + money(c.minimum) + ' or more';
+		if (c.minimum !== '' && c.minimum != null && Number(c.minimum) > 0) txt += (/ off$/.test(txt) ? ' orders of ' : ' on orders of ') + money(c.minimum) + ' or more';
 		if (c.expires) txt += ', until ' + (c.expiresText || c.expires);
 		if (c.perUser) txt += ', ' + (Number(c.perUser) === 1 ? 'once' : c.perUser + ' times') + ' per customer';
 		return txt;
@@ -1154,7 +1154,7 @@
 		title('Discounts');
 		var s = state.coupons, my = seq;
 		view.innerHTML =
-			'<div class="ysm-toolbar"><label class="ysm-search">' + icon('search') + '<input type="search" id="d-search" placeholder="Search discount codes" value="' + esc(s.search) + '"></label><a class="ysm-btn ysm-btn-primary" href="#/coupons/new">' + icon('plus') + ' Create discount</a></div>' +
+			'<div class="ysm-toolbar"><label class="ysm-search">' + icon('search') + '<input type="search" id="d-search" placeholder="Search discount codes" value="' + esc(s.search) + '"></label><a class="ysm-btn ysm-btn-primary" href="#/coupons/new">' + icon('plus') + '<span class="ysm-hide-sm"> Create discount</span><span class="ysm-show-sm">New</span></a></div>' +
 			'<div class="ysm-tabs">' + [['', 'All'], ['active', 'Active'], ['ended', 'Off or ended']].map(function (t) { return '<button class="ysm-tab' + (s.filter === t[0] ? ' is-on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
 			'<div class="ysm-card ysm-card-flush" id="d-list">' + spinner('Loading discounts…') + '</div>';
 		$('#d-search').addEventListener('input', debounce(function () { s.search = this.value.trim(); s.page = 1; load(); }, 400));
@@ -1188,9 +1188,10 @@
 		(id ? api('/coupons/' + id) : Promise.resolve(null)).then(function (c) { if (current(my)) editor(c); }).catch(function (e) { if (current(my)) fail(e); });
 
 		function editor(c) {
+			title(c ? 'Edit discount' : 'Create discount');
 			var D = c ? Object.assign({}, c, { on: c.state !== 'off' }) : { id: 0, code: genCode(), type: 'percent', amount: '', freeShip: false, minimum: '', expires: '', limit: '', perUser: '', individual: false, noSale: false, note: '', on: true, used: 0 };
 			var dirty = false;
-			function setDirty() { if (!dirty) { dirty = true; leaveGuard = true; } }
+			function setDirty() { if (!dirty) { dirty = true; leaveGuard = true; var st = $('#cp-state'); if (st) st.textContent = 'Unsaved changes'; } }
 			var types = [['percent', '% off'], ['fixed_cart', 'Amount off']];
 			if (D.type === 'fixed_product') types.push(['fixed_product', 'Off each item']);
 			var share = function () { return 'Use code ' + D.code + ' at ' + C.site + ' for ' + couponSummary(D).replace(/^./, function (x) { return x.toLowerCase(); }) + '. ' + C.siteUrl; };
@@ -1209,7 +1210,7 @@
 				'<label class="ysm-switch ysm-mt"><input type="checkbox" id="cp-ind"' + (D.individual ? ' checked' : '') + '><span></span>Can’t be combined with other discount codes</label>' +
 				'<label class="ysm-switch ysm-mt"><input type="checkbox" id="cp-nosale"' + (D.noSale ? ' checked' : '') + '><span></span>Don’t apply to items already on sale</label></div>' +
 				'</div><div class="ysm-ed-side">' +
-				'<div class="ysm-card ysm-summary"><div class="ysm-card-head"><h3>Summary</h3></div><p id="cp-sum"></p><div class="ysm-row ysm-wrap"><button class="ysm-btn ysm-btn-sm" id="cp-copy">' + icon('copy') + ' Copy code</button><a class="ysm-btn ysm-btn-sm ysm-btn-wa" id="cp-wa" target="_blank" rel="noopener" href="#">' + icon('chat') + ' Share on WhatsApp</a></div></div>' +
+				'<div class="ysm-card ysm-summary"><div class="ysm-card-head"><h3>Summary</h3></div><p id="cp-sum"></p><div class="ysm-row ysm-wrap"><button class="ysm-btn ysm-btn-sm" id="cp-copy">' + icon('copy') + ' Copy code</button><button class="ysm-btn ysm-btn-sm ysm-btn-wa" id="cp-wa">' + icon('chat') + ' Share on WhatsApp</button></div></div>' +
 				'<div class="ysm-card"><div class="ysm-card-head"><h3>Status</h3></div><div class="ysm-seg"><button data-on="1" class="' + (D.on ? 'is-on' : '') + '">Active</button><button data-on="0" class="' + (!D.on ? 'is-on' : '') + '">Off</button></div><p class="ysm-hint">Turn a discount off to stop customers using it, without deleting it.</p></div>' +
 				'<div class="ysm-card"><div class="ysm-card-head"><h3>Private note</h3></div><textarea class="ysm-input" id="cp-note" rows="2" placeholder="Only you see this, e.g. Instagram giveaway">' + esc(D.note || '') + '</textarea></div>' +
 				(D.id ? '<button class="ysm-btn ysm-btn-ghost-danger ysm-btn-block" id="cp-delete">' + icon('trash') + ' Delete discount</button>' : '') +
@@ -1217,7 +1218,6 @@
 				'<div class="ysm-savebar"><span class="ysm-muted" id="cp-state">' + (D.id ? '' : 'Not saved yet') + '</span><button class="ysm-btn ysm-btn-primary" id="cp-save">' + icon('check') + ' Save discount</button></div>';
 			function refresh() {
 				$('#cp-sum').textContent = couponSummary(D);
-				$('#cp-wa').href = 'https://wa.me/?text=' + encodeURIComponent(share());
 			}
 			refresh();
 			var map = { 'cp-amount': 'amount', 'cp-min': 'minimum', 'cp-limit': 'limit', 'cp-per': 'perUser', 'cp-note': 'note', 'cp-exp': 'expires' };
@@ -1254,6 +1254,7 @@
 					else toast('Copy the code: ' + D.code);
 					return;
 				}
+				if (e.target.closest('#cp-wa')) { window.open('https://wa.me/?text=' + encodeURIComponent(share()), '_blank', 'noopener'); return; }
 				if (e.target.closest('#cp-save')) { save(); return; }
 				if (e.target.closest('#cp-delete')) {
 					ask('Delete this discount?', 'Customers will no longer be able to use the code ' + D.code + '.', 'Delete', true).then(function (yes) {

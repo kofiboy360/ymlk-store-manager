@@ -310,7 +310,7 @@ final class YSM_More {
 				$v = (string) $v;
 				// Stop spreadsheet programs from running cell text as a formula.
 				return preg_match( '/^[=+\-@]/', $v ) && ! is_numeric( $v ) ? "'" . $v : $v;
-			}, $row ) );
+			}, $row ), ',', '"', '' );
 		}
 		rewind( $fh );
 		$out = stream_get_contents( $fh );
