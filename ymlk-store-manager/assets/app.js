@@ -800,15 +800,15 @@
 			}
 			var v = p.variations, total = 0, counted = 0, low = 0, out = 0;
 			v.forEach(function (x) { if (!x.enabled) return; var l = level(x); if (x.manage) { counted++; total += Math.max(0, +x.stock || 0); } if (l === 'low') low++; if (l === 'out') out++; });
-			var txt = v.length + ' option' + (v.length === 1 ? '' : 's') + ' · ' + (counted ? total + ' in stock' : 'not counted');
-			return { text: txt, low: low, out: out };
+			var txt = v.length + ' option' + (v.length === 1 ? '' : 's') + ' · ' + (counted ? total + ' in stock' : 'not counted, always available');
+			return { text: txt, low: low, out: out, counted: counted };
 		}
 		function row(p) {
 			var l = p.type === 'variable' ? '' : level(p), sm = summary(p), isOpen = !!open[p.id];
 			var right, sub;
 			if (p.type === 'variable') {
 				sub = esc(sm.text);
-				right = '<div class="ysm-inv-badges">' + (sm.out ? '<span class="ysm-badge ysm-st-cancelled">' + sm.out + ' sold out</span>' : '') + (sm.low ? '<span class="ysm-badge ysm-st-on-hold">' + sm.low + ' low</span>' : '') + (!sm.out && !sm.low ? '<span class="ysm-badge ysm-st-processing">OK</span>' : '') + '</div><span class="ysm-chev' + (isOpen ? ' is-open' : '') + '">' + icon('next') + '</span>';
+				right = '<div class="ysm-inv-badges">' + (sm.out ? '<span class="ysm-badge ysm-st-cancelled">' + sm.out + ' sold out</span>' : '') + (sm.low ? '<span class="ysm-badge ysm-st-on-hold">' + sm.low + ' low</span>' : '') + (!sm.out && !sm.low ? '<span class="ysm-badge ysm-st-processing">' + (sm.counted ? 'In stock' : 'Available') + '</span>' : '') + '</div><span class="ysm-chev' + (isOpen ? ' is-open' : '') + '">' + icon('next') + '</span>';
 			} else {
 				sub = esc(sm);
 				right = p.manage ? stepper(p) : '<button class="ysm-btn ysm-btn-sm" data-track="' + p.id + '">Count stock</button>';
@@ -832,7 +832,7 @@
 				// Rows = the option that isn't "size"; columns = sizes (or the second option).
 				var ci = /size/i.test(o[0].name) && !/size/i.test(o[1].name) ? 0 : 1, rows = o[1 - ci], cols = o[ci];
 				var find = function (rv, cv) { return p.variations.filter(function (x) { return x.attrs[rows.key] === rv && x.attrs[cols.key] === cv; })[0]; };
-				html += '<div class="ysm-matrix-wrap"><table class="ysm-matrix"><thead><tr><th>' + esc(rows.name) + ' \\ ' + esc(cols.name) + '</th>' + cols.values.map(function (c) { return '<th>' + esc(c.name) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+				html += '<div class="ysm-matrix-wrap"><table class="ysm-matrix"><thead><tr><th></th>' + cols.values.map(function (c) { return '<th>' + esc(c.name) + '</th>'; }).join('') + '</tr></thead><tbody>' +
 					rows.values.map(function (rv) { return '<tr><th>' + esc(rv.name) + '</th>' + cols.values.map(function (cv) { return cell(find(rv.slug, cv.slug)); }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
 			} else {
 				html += '<table class="ysm-matrix ysm-matrix-list"><tbody>' + p.variations.map(function (x) { return '<tr><th>' + esc(x.label || ('#' + x.id)) + '</th>' + cell(x) + '</tr>'; }).join('') + '</tbody></table>';
