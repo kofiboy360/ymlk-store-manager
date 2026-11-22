@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "download_url": "https://github.com/kofiboy360/ymlk-store-manager/releases/download/v1.0.0/ymlk-store-manager.zip",
+  "homepage": "https://ymlktechnologies.com",
+  "requires": "6.2",
+  "tested": "7.1",
+  "requires_php": "7.4",
+  "released": "2026-11-22",
+  "changelog": "<h4>1.0.0</h4><ul><li>First release.</li></ul>"
+}
