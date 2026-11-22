@@ -2,7 +2,7 @@
 /**
  * Plugin Name: YMLK Store Manager
  * Description: A simple, fast store-management app for WooCommerce shop owners: sales overview, orders, products (with an easy options/variations builder) and inventory, all in one place.
- * Version: 1.0.2
+ * Version: 1.0.3
  * Author: YMLK Technologies
  * Author URI: https://ymlktechnologies.com
  * Requires at least: 6.2
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'YSM_VERSION', '1.0.2' );
+define( 'YSM_VERSION', '1.0.3' );
 define( 'YSM_FILE', __FILE__ );
 define( 'YSM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'YSM_URL', plugin_dir_url( __FILE__ ) );

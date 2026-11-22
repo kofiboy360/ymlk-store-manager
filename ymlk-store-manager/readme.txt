@@ -3,7 +3,7 @@ Contributors: ymlktechnologies
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 License: GPLv2 or later
 
 A simple, fast store-management app for WooCommerce shop owners.
@@ -14,6 +14,9 @@ Overview of sales, orders with one-tap status changes and WhatsApp contact, prod
 Developed by YMLK Technologies — https://ymlktechnologies.com
 
 == Changelog ==
+= 1.0.3 =
+* Shorter stock text on phones.
+
 = 1.0.2 =
 * Clearer stock labels in Inventory.
 

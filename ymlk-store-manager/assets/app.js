@@ -796,11 +796,11 @@
 		function summary(p) {
 			if (p.type !== 'variable') {
 				var l = level(p);
-				return p.manage ? (l === 'out' ? 'Sold out' : p.stock + ' in stock') : (p.status === 'outofstock' ? 'Sold out' : 'Not counted · always available');
+				return p.manage ? (l === 'out' ? 'Sold out' : p.stock + ' in stock') : (p.status === 'outofstock' ? 'Sold out' : 'Always available');
 			}
 			var v = p.variations, total = 0, counted = 0, low = 0, out = 0;
 			v.forEach(function (x) { if (!x.enabled) return; var l = level(x); if (x.manage) { counted++; total += Math.max(0, +x.stock || 0); } if (l === 'low') low++; if (l === 'out') out++; });
-			var txt = v.length + ' option' + (v.length === 1 ? '' : 's') + ' · ' + (counted ? total + ' in stock' : 'not counted, always available');
+			var txt = v.length + ' option' + (v.length === 1 ? '' : 's') + ' · ' + (counted ? total + ' in stock' : 'always available');
 			return { text: txt, low: low, out: out, counted: counted };
 		}
 		function row(p) {
