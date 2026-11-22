@@ -2,7 +2,7 @@
 /**
  * Plugin Name: YMLK Store Manager
  * Description: A simple, fast store-management app for WooCommerce shop owners: sales overview, orders, products (with an easy options/variations builder) and inventory, all in one place.
- * Version: 1.1.0
+ * Version: 1.1.1
  * Author: YMLK Technologies
  * Author URI: https://ymlktechnologies.com
  * Requires at least: 6.2
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'YSM_VERSION', '1.1.0' );
+define( 'YSM_VERSION', '1.1.1' );
 define( 'YSM_FILE', __FILE__ );
 define( 'YSM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'YSM_URL', plugin_dir_url( __FILE__ ) );
@@ -97,8 +97,11 @@ final class YSM_Plugin {
 		if ( ! self::simple_mode_for() ) {
 			return;
 		}
-		foreach ( array( 'elementor_edit_page', 'elementor_inspector', 'elementor-maintenance-on' ) as $node ) {
-			$bar->remove_node( $node );
+		// Elementor and theme-builder items (Edit with Elementor, templates, Theme Builder, Site Settings, Astra layouts).
+		foreach ( (array) $bar->get_nodes() as $node ) {
+			if ( preg_match( '/^(elementor|new-elementor|edit-custom-layout|astra-advanced-hook)/', $node->id ) ) {
+				$bar->remove_node( $node->id );
+			}
 		}
 		$id   = is_admin() ? ( isset( $_GET['post'] ) ? (int) $_GET['post'] : 0 ) : get_queried_object_id(); // phpcs:ignore
 		$edit = $bar->get_node( 'edit' );
