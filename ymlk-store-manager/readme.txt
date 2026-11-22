@@ -3,7 +3,7 @@ Contributors: ymlktechnologies
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.1
+Stable tag: 1.2.0
 License: GPLv2 or later
 
 A simple, fast store-management app for WooCommerce shop owners.
@@ -14,6 +14,14 @@ Overview of sales, orders with one-tap status changes and WhatsApp contact, prod
 Developed by YMLK Technologies — https://ymlktechnologies.com
 
 == Changelog ==
+= 1.2.0 =
+* Customers: everyone who ordered, with totals, contact buttons and order history.
+* Discounts: create and manage coupon codes, with a plain-English summary and WhatsApp sharing.
+* Download orders, customers and stock as spreadsheets (CSV).
+* New-order alerts: pop-up, sound, Orders badge, desktop notifications, and the new-order email address.
+* Help: tutorial videos and how to contact YMLK Technologies.
+* Phones: a More button in the bottom bar.
+
 = 1.1.1 =
 * Simple mode also hides Elementor template, Theme Builder and site-settings links from the top bar.
 

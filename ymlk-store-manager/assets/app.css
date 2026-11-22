@@ -48,7 +48,7 @@ body.ysm-fullscreen #wpbody { padding-top: 0 !important; }
 .ysm-view { padding: 16px; max-width: 1180px; margin: 0 auto; }
 .ysm-foot { text-align: center; color: var(--muted); font-size: 12px; padding: 8px 16px 20px; }
 .ysm-foot a { text-decoration: underline; }
-.ysm-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(4, 1fr); background: #fff; border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+.ysm-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(5, 1fr); background: #fff; border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
 .ysm-tabbar a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 4px 8px; font-size: 11.5px; color: var(--muted); }
 .ysm-tabbar a.is-on { color: var(--ink); font-weight: 600; }
 .ysm-tabbar a.is-on .ysm-i { stroke-width: 2.2; }
@@ -381,3 +381,77 @@ textarea.ysm-input { resize: vertical; }
 	.ysm-matrix tbody th { font-size: 12px; padding-right: 4px; white-space: normal; max-width: 76px; }
 	.ysm-matrix td.is-none { width: 46px; }
 }
+
+/* ---------------------------------------------------------------- phase 2 */
+.ysm-nav a, .ysm-tabbar a { position: relative; }
+.ysm-navbadge { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: #dc2626; color: #fff; font: 700 11px/20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin-left: auto; }
+.ysm-tabbar .ysm-navbadge { position: absolute; top: 4px; left: calc(50% + 6px); margin: 0; min-width: 18px; height: 18px; line-height: 18px; padding: 0 5px; }
+.ysm-tabbar a[data-more].is-on { color: var(--ink); font-weight: 600; }
+.ysm-hide-sm { display: none; }
+@media (min-width: 600px) { .ysm-hide-sm { display: inline; } }
+.ysm-mb { margin-bottom: 14px; }
+.ysm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .04em; text-transform: uppercase; }
+
+/* dialogs & mobile sheet */
+.ysm-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.ysm-dialog-head h3 { margin: 0; }
+.ysm-dialog-wide { max-width: 480px; max-height: calc(100vh - 40px); overflow: auto; }
+.ysm-dialog .ysm-label { margin-top: 12px; }
+.ysm-dialog .ysm-sub { margin-top: 16px; }
+.ysm-setrow { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.ysm-setrow small { color: var(--muted); font-size: 12.5px; }
+.ysm-modal.ysm-sheet { align-items: flex-end; padding: 0; }
+.ysm-sheet .ysm-dialog { max-width: none; border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }
+@media (min-width: 900px) { .ysm-modal.ysm-sheet { align-items: center; padding: 20px; } .ysm-sheet .ysm-dialog { max-width: 400px; border-radius: 16px; } }
+.ysm-morelist { display: flex; flex-direction: column; }
+.ysm-morelist a { display: flex; align-items: center; gap: 14px; padding: 14px 4px; border-bottom: 1px solid var(--line); font-weight: 500; font-size: 15.5px; color: var(--ink) !important; }
+.ysm-morelist a span { flex: 1; }
+.ysm-morelist a .ysm-i:last-child:not(:first-child) { color: var(--muted); width: 16px; height: 16px; }
+.ysm-credit-sm { font-size: 12px; color: var(--muted); text-align: center; margin: 14px 0 0; }
+.ysm-credit-sm a { text-decoration: underline; }
+
+/* new-order alerts */
+.ysm-alertstack { position: fixed; right: 16px; top: 76px; z-index: 100045; display: flex; flex-direction: column; gap: 10px; width: min(380px, calc(100% - 32px)); }
+.ysm-alertpop { display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; background: #fff; border: 1px solid var(--line); border-left: 4px solid #16a34a; border-radius: 14px; box-shadow: 0 14px 40px rgba(16,24,40,.18); animation: ysm-pop .25s ease-out; }
+.ysm-alertpop small { color: var(--ink2); font-size: 13px; }
+.ysm-alertpop-ic { width: 38px; height: 38px; border-radius: 10px; background: #dcfce7; color: #166534; display: flex; align-items: center; justify-content: center; flex: none; }
+@keyframes ysm-pop { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 899px) { .ysm-alertstack { top: 70px; right: 50%; transform: translateX(50%); } }
+
+/* customers */
+.ysm-people { list-style: none; margin: 0; padding: 0; }
+.ysm-people li + li { border-top: 1px solid var(--line); }
+.ysm-people a { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+.ysm-people a:hover { background: #fafbfc; }
+.ysm-people .ysm-o-side small { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.ysm-avatar { width: 42px; height: 42px; border-radius: 50%; background: #eef0f3; color: var(--ink2); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex: none; }
+.ysm-avatar-lg { width: 46px; height: 46px; font-size: 16px; background: var(--accent); color: #fff; }
+.ysm-stats-4 { grid-template-columns: 1fr 1fr; }
+.ysm-stats-4 .ysm-stat:first-child { grid-column: auto; }
+.ysm-stats-4 .ysm-stat strong { font-size: 20px; }
+.ysm-stats-4 .ysm-stat .ysm-stat-sm { font-size: 16px; padding-top: 4px; }
+@media (min-width: 760px) { .ysm-stats-4 { grid-template-columns: repeat(4, 1fr); } }
+
+/* discounts */
+.ysm-coupons { list-style: none; margin: 0; padding: 0; }
+.ysm-coupons li + li { border-top: 1px solid var(--line); }
+.ysm-coupons a { display: flex; align-items: center; gap: 12px; padding: 13px 16px; }
+.ysm-coupons a:hover { background: #fafbfc; }
+.ysm-coupons .ysm-grow strong { font-weight: 500; font-size: 14px; white-space: normal; }
+.ysm-code { flex: none; font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .05em; padding: 8px 10px; border: 1.5px dashed #9aa1ab; border-radius: 8px; background: #fafbfc; color: var(--ink); max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ysm-affix { display: flex; align-items: stretch; max-width: 240px; }
+.ysm-affix span { display: flex; align-items: center; padding: 0 12px; background: #f1f2f4; border: 1px solid #d5d9df; border-right: 0; border-radius: 10px 0 0 10px; font-weight: 600; color: var(--ink2); }
+.ysm-affix .ysm-input { border-radius: 0 10px 10px 0 !important; }
+.ysm-seg.ysm-seg-3 { grid-template-columns: 1fr 1fr 1fr; }
+.ysm-summary p { margin: 0 0 12px; font-size: 15px; font-weight: 600; line-height: 1.45; }
+
+/* help */
+.ysm-videos { display: grid; gap: 14px; grid-template-columns: 1fr; margin-bottom: 14px; }
+@media (min-width: 700px) { .ysm-videos { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1100px) { .ysm-videos { grid-template-columns: 1fr 1fr 1fr; } }
+.ysm-video { margin: 0; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.ysm-video video { width: 100%; aspect-ratio: 16 / 9; background: #111; display: block; }
+.ysm-video strong { padding: 12px 14px; font-size: 14.5px; }
+.ysm-support { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.ysm-support small { color: var(--ink2); font-size: 13.5px; }
+.ysm-support-ic { width: 44px; height: 44px; border-radius: 12px; background: #eef2ff; color: #3730a3; display: flex; align-items: center; justify-content: center; flex: none; }

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: YMLK Store Manager
  * Description: A simple, fast store-management app for WooCommerce shop owners: sales overview, orders, products (with an easy options/variations builder) and inventory, all in one place.
- * Version: 1.1.1
+ * Version: 1.2.0
  * Author: YMLK Technologies
  * Author URI: https://ymlktechnologies.com
  * Requires at least: 6.2
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'YSM_VERSION', '1.1.1' );
+define( 'YSM_VERSION', '1.2.0' );
 define( 'YSM_FILE', __FILE__ );
 define( 'YSM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'YSM_URL', plugin_dir_url( __FILE__ ) );
@@ -25,6 +25,7 @@ define( 'YSM_UPDATE_JSON', 'https://raw.githubusercontent.com/kofiboy360/ymlk-st
 
 require_once YSM_DIR . 'includes/class-ysm-rest.php';
 require_once YSM_DIR . 'includes/class-ysm-updater.php';
+require_once YSM_DIR . 'includes/class-ysm-more.php';
 
 /* Declare compatibility with WooCommerce's order storage (HPOS). */
 add_action(
@@ -55,6 +56,7 @@ final class YSM_Plugin {
 			add_action( $screen, array( __CLASS__, 'simple_mode_redirect' ) );
 		}
 		YSM_REST::init();
+		YSM_More::init();
 		YSM_Updater::init();
 	}
 
@@ -195,6 +197,8 @@ final class YSM_Plugin {
 				'lowStock'   => (int) get_option( 'woocommerce_notify_low_stock_amount', 2 ),
 				'version'    => YSM_VERSION,
 				'credit'     => 'https://ymlktechnologies.com',
+				'canCoupons' => current_user_can( 'edit_shop_coupons' ),
+				'canAlerts'  => current_user_can( 'manage_woocommerce' ),
 			)
 		);
 	}
@@ -214,6 +218,7 @@ final class YSM_Plugin {
 		}
 		check_admin_referer( 'ysm_settings' );
 		update_option( 'ysm_simple_mode', empty( $_POST['ysm_simple_mode'] ) ? '0' : '1' );
+		update_option( 'ysm_support_whatsapp', isset( $_POST['ysm_support_whatsapp'] ) ? preg_replace( '/[^\d+ ]/', '', wp_unslash( $_POST['ysm_support_whatsapp'] ) ) : '' ); // phpcs:ignore
 		add_settings_error( 'ysm', 'saved', 'Settings saved.', 'updated' );
 	}
 
@@ -231,6 +236,13 @@ final class YSM_Plugin {
 						<td>
 							<label><input type="checkbox" name="ysm_simple_mode" value="1" <?php checked( $simple, '1' ); ?>> Shop Managers go straight to Store Manager after logging in and only see Store Manager, Dashboard and Profile in the menu.</label>
 							<p class="description">Administrators always see the full WordPress admin.</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="ysm_support_whatsapp">Support WhatsApp number</label></th>
+						<td>
+							<input type="text" id="ysm_support_whatsapp" name="ysm_support_whatsapp" class="regular-text" value="<?php echo esc_attr( get_option( 'ysm_support_whatsapp', '' ) ); ?>" placeholder="e.g. +233 55 000 0000">
+							<p class="description">Shown on the Help page so the shop owner can message you. Include the country code.</p>
 						</td>
 					</tr>
 				</table>

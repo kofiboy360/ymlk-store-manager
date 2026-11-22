@@ -1,10 +1,10 @@
 {
-  "version": "1.1.1",
-  "download_url": "https://raw.githubusercontent.com/kofiboy360/ymlk-store-manager/main/dist/ymlk-store-manager-1.1.1.zip",
+  "version": "1.2.0",
+  "download_url": "https://raw.githubusercontent.com/kofiboy360/ymlk-store-manager/main/dist/ymlk-store-manager-1.2.0.zip",
   "homepage": "https://ymlktechnologies.com",
   "requires": "6.2",
   "tested": "7.1",
   "requires_php": "7.4",
   "released": "2026-11-22",
-  "changelog": "<h4>1.1.1</h4><ul><li>Simple mode hides all Elementor links from the top bar.</li></ul><h4>1.1.0</h4><ul><li>Product changes show on the shop straight away, also when logged in.</li><li>Simple mode: product edit links open Store Manager; Edit with Elementor hidden for Shop Managers.</li></ul><h4>1.0.4</h4><ul><li>Stock grid fits phone screens.</li></ul><h4>1.0.3</h4><ul><li>Shorter stock text on phones.</li></ul><h4>1.0.2</h4><ul><li>Clearer stock labels in Inventory.</li></ul><h4>1.0.1</h4><ul><li>Inventory lists each product once, with a stock grid for its sizes and colours.</li><li>Fixed button colours on hover.</li></ul><h4>1.0.0</h4><ul><li>First release.</li></ul>"
+  "changelog": "<h4>1.2.0</h4><ul><li>Customers, Discounts, CSV export, new-order alerts and Help.</li></ul><h4>1.1.1</h4><ul><li>Simple mode hides all Elementor links from the top bar.</li></ul><h4>1.1.0</h4><ul><li>Product changes show on the shop straight away, also when logged in.</li><li>Simple mode: product edit links open Store Manager; Edit with Elementor hidden for Shop Managers.</li></ul><h4>1.0.4</h4><ul><li>Stock grid fits phone screens.</li></ul><h4>1.0.3</h4><ul><li>Shorter stock text on phones.</li></ul><h4>1.0.2</h4><ul><li>Clearer stock labels in Inventory.</li></ul><h4>1.0.1</h4><ul><li>Inventory lists each product once, with a stock grid for its sizes and colours.</li><li>Fixed button colours on hover.</li></ul><h4>1.0.0</h4><ul><li>First release.</li></ul>"
 }

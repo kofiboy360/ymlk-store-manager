@@ -376,6 +376,7 @@ final class YSM_REST {
 				'shippingTotal' => self::money( $o->get_shipping_total() ),
 				'shippingMethod' => $o->get_shipping_method(),
 				'discount'  => self::money( $o->get_discount_total() ),
+				'coupons'   => array_map( 'strtoupper', $o->get_coupon_codes() ),
 				'tax'       => self::money( $o->get_total_tax() ),
 				'total'     => self::money( $o->get_total() ),
 				'refunded'  => self::money( $o->get_total_refunded() ),

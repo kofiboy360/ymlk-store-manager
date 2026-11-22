@@ -70,7 +70,14 @@
 		check: '<path d="M5 12l5 5L20 7"/>',
 		globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
 		alert: '<path d="M12 3l10 18H2L12 3z"/><path d="M12 10v4M12 17.5v.5"/>',
-		wp: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/>'
+		wp: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/>',
+		users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14a6.5 6.5 0 0 1 3.5 6"/>',
+		percent: '<path d="M19 5L5 19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/>',
+		help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6v.6"/><path d="M12 17v.5"/>',
+		more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+		download: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
+		bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+		copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>'
 	};
 	function icon(n) { return '<svg class="ysm-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (I[n] || '') + '</svg>'; }
 	function spinner(t) { return '<div class="ysm-loading"><span class="ysm-spin"></span>' + esc(t || 'Loading…') + '</div>'; }
@@ -115,8 +122,11 @@
 		['overview', 'Overview', 'home'],
 		['orders', 'Orders', 'bag'],
 		['products', 'Products', 'tag'],
-		['inventory', 'Inventory', 'box']
+		['inventory', 'Inventory', 'box'],
+		['customers', 'Customers', 'users']
 	];
+	if (C.canCoupons) NAV.push(['coupons', 'Discounts', 'percent']);
+	NAV.push(['help', 'Help', 'help']);
 	var brand = C.logo ? '<img src="' + esc(C.logo) + '" alt="' + esc(C.site) + '">' : '<span>' + esc(C.site) + '</span>';
 	root.innerHTML =
 		'<div class="ysm-shell">' +
@@ -134,7 +144,7 @@
 		'<a class="ysm-iconbtn" href="' + esc(C.logout) + '" title="Log out">' + icon('out') + '</a></div></header>' +
 		'<main id="ysm-view" class="ysm-view"></main>' +
 		'<footer class="ysm-foot">Developed by <a href="' + esc(C.credit) + '" target="_blank" rel="noopener">YMLK Technologies</a></footer></div>' +
-		'<nav class="ysm-tabbar">' + NAV.map(function (n) { return '<a href="#/' + n[0] + '" data-nav="' + n[0] + '">' + icon(n[2]) + '<span>' + n[1] + '</span></a>'; }).join('') + '</nav>' +
+		'<nav class="ysm-tabbar">' + NAV.slice(0, 4).map(function (n) { return '<a href="#/' + n[0] + '" data-nav="' + n[0] + '">' + icon(n[2]) + '<span>' + n[1] + '</span></a>'; }).join('') + '<a href="#" data-more>' + icon('more') + '<span>More</span></a></nav>' +
 		'</div>';
 	var view = $('#ysm-view');
 	function title(t) { $('#ysm-title').textContent = t; document.title = t + ' ‹ ' + C.site; }
@@ -144,6 +154,8 @@
 		orders: { status: 'all', page: 1, search: '' },
 		products: { status: '', page: 1, search: '' },
 		inv: { filter: 'all', page: 1, search: '' },
+		customers: { sort: 'recent', page: 1, search: '' },
+		coupons: { filter: '', page: 1, search: '' },
 		meta: null
 	};
 	var leaveGuard = null, lastHash = null, bouncing = false, seq = 0;
@@ -163,6 +175,8 @@
 		view.onclick = view.oninput = view.onchange = view.onkeydown = null;
 		var m, sec = (h.match(/^#\/(\w+)/) || [])[1] || 'overview';
 		$$('[data-nav]').forEach(function (a) { a.classList.toggle('is-on', a.getAttribute('data-nav') === sec); });
+		var moreBtn = $('[data-more]'); if (moreBtn) moreBtn.classList.toggle('is-on', ['customers', 'coupons', 'help'].indexOf(sec) > -1);
+		$$('.ysm-modal.ysm-sheet').forEach(function (x) { x.remove(); });
 		window.scrollTo(0, 0);
 		if ((m = h.match(/^#\/orders\/(\d+)$/))) return orderView(+m[1]);
 		if (h === '#/orders') return ordersList();
@@ -170,6 +184,12 @@
 		if ((m = h.match(/^#\/products\/(\d+)$/))) return productEdit(+m[1]);
 		if (h === '#/products') return productsList();
 		if (h === '#/inventory') return inventory();
+		if ((m = h.match(/^#\/customers\/(.+)$/))) return customerView(decodeURIComponent(m[1]));
+		if (h === '#/customers') return customersList();
+		if (h === '#/coupons/new') return couponEdit(0);
+		if ((m = h.match(/^#\/coupons\/(\d+)$/))) return couponEdit(+m[1]);
+		if (h === '#/coupons') return couponsList();
+		if (h === '#/help') return helpView();
 		return overview();
 	}
 	window.addEventListener('hashchange', route);
@@ -272,11 +292,13 @@
 		var s = state.orders, my = seq;
 		var labels = orderLabels || { processing: 'Processing', 'on-hold': 'On hold', pending: 'Pending payment', completed: 'Completed', cancelled: 'Cancelled', refunded: 'Refunded', failed: 'Failed' };
 		view.innerHTML =
-			'<div class="ysm-toolbar"><label class="ysm-search">' + icon('search') + '<input type="search" id="o-search" placeholder="Search name, phone, email or order number" value="' + esc(s.search) + '"></label></div>' +
+			'<div class="ysm-toolbar"><label class="ysm-search">' + icon('search') + '<input type="search" id="o-search" placeholder="Search name, phone, email or order number" value="' + esc(s.search) + '"></label><button class="ysm-btn" id="o-alerts" title="New-order alerts">' + icon('bell') + '<span class="ysm-hide-sm"> Alerts</span></button><button class="ysm-btn" id="o-export" title="Download orders">' + icon('download') + '<span class="ysm-hide-sm"> Export</span></button></div>' +
 			'<div class="ysm-tabs">' + ORDER_TABS.map(function (k) { return '<button class="ysm-tab' + (s.status === k ? ' is-on' : '') + '" data-tab="' + k + '">' + esc(k === 'all' ? 'All' : (labels[k] || k)) + '</button>'; }).join('') + '</div>' +
 			'<div class="ysm-card ysm-card-flush" id="o-list">' + spinner('Loading orders…') + '</div>';
 		$('#o-search').addEventListener('input', debounce(function () { s.search = this.value.trim(); s.page = 1; load(); }, 400));
 		view.onclick = function (e) {
+			if (e.target.closest('#o-export')) { exportOrders(); return; }
+			if (e.target.closest('#o-alerts')) { alertSettings(); return; }
 			var t = e.target.closest('[data-tab]');
 			if (t) { s.status = t.getAttribute('data-tab'); s.page = 1; $$('.ysm-tab', view).forEach(function (b) { b.classList.toggle('is-on', b === t); }); load(); }
 			var p = e.target.closest('[data-page]');
@@ -325,7 +347,7 @@
 				'<div class="ysm-card"><div class="ysm-card-head"><h3>Items</h3><span class="ysm-muted">' + o.items.length + '</span></div><ul class="ysm-items">' +
 				o.items.map(function (it) { return '<li>' + thumb(it.image) + '<span class="ysm-grow"><strong>' + esc(it.name) + '</strong>' + (it.meta.length ? '<small>' + esc(it.meta.join(' · ')) + '</small>' : '') + (it.sku ? '<small>SKU ' + esc(it.sku) + '</small>' : '') + '</span><span class="ysm-qty">× ' + it.qty + '</span><b>' + money(it.total) + '</b></li>'; }).join('') +
 				'</ul><dl class="ysm-totals"><dt>Subtotal</dt><dd>' + money(o.subtotal) + '</dd>' +
-				(o.discount > 0 ? '<dt>Discount</dt><dd>−' + money(o.discount) + '</dd>' : '') +
+				(o.discount > 0 ? '<dt>Discount' + (o.coupons && o.coupons.length ? ' (' + esc(o.coupons.join(', ')) + ')' : '') + '</dt><dd>−' + money(o.discount) + '</dd>' : '') +
 				(o.shippingMethod || o.shippingTotal > 0 ? '<dt>Delivery' + (o.shippingMethod ? ' (' + esc(o.shippingMethod) + ')' : '') + '</dt><dd>' + money(o.shippingTotal) + '</dd>' : '') +
 				(o.tax > 0 ? '<dt>Tax</dt><dd>' + money(o.tax) + '</dd>' : '') +
 				'<dt class="ysm-total">Total</dt><dd class="ysm-total">' + money(o.total) + '</dd>' +
@@ -782,7 +804,7 @@
 		var s = state.inv, my = seq, threshold = C.lowStock || 2, items = {}, open = s.open || {};
 		s.open = open;
 		view.innerHTML =
-			'<div class="ysm-toolbar"><label class="ysm-search">' + icon('search') + '<input type="search" id="i-search" placeholder="Search products" value="' + esc(s.search) + '"></label></div>' +
+			'<div class="ysm-toolbar"><label class="ysm-search">' + icon('search') + '<input type="search" id="i-search" placeholder="Search products" value="' + esc(s.search) + '"></label><button class="ysm-btn" id="i-export" title="Download stock list">' + icon('download') + '<span class="ysm-hide-sm"> Export</span></button></div>' +
 			'<div class="ysm-tabs">' + [['all', 'Everything'], ['low', 'Running low'], ['out', 'Out of stock']].map(function (t) { return '<button class="ysm-tab' + (s.filter === t[0] ? ' is-on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
 			'<div class="ysm-card ysm-card-flush" id="i-list">' + spinner('Loading stock…') + '</div>' +
 			'<p class="ysm-hint">Empty stock (∞) means it isn’t counted and is always available. 0 means sold out.</p>';
@@ -861,6 +883,7 @@
 		function toggle(pid) { open[pid] = !open[pid]; redraw(pid); }
 
 		view.onclick = function (e) {
+			if (e.target.closest('#i-export')) { download({ type: 'products' }, 'row'); return; }
 			var t = e.target.closest('[data-tab]');
 			if (t) { s.filter = t.getAttribute('data-tab'); s.page = 1; $$('.ysm-tab', view).forEach(function (b) { b.classList.toggle('is-on', b === t); }); load(); return; }
 			var p = e.target.closest('[data-page]');
@@ -907,6 +930,383 @@
 		}
 		load();
 	}
+
+	/* =================================================== Phase 2 screens */
+
+	function waTo(phone, msg) {
+		var d = String(phone || '').replace(/[^\d+]/g, '');
+		if (!d) return '';
+		if (d.charAt(0) === '+') d = d.slice(1);
+		else if (d.slice(0, 2) === '00') d = d.slice(2);
+		else if (d.charAt(0) === '0' && C.calling) d = String(C.calling).replace(/\D/g, '') + d.slice(1);
+		return 'https://wa.me/' + d + (msg ? '?text=' + encodeURIComponent(msg) : '');
+	}
+	function store(k, v) { try { if (v === undefined) return window.localStorage.getItem(k); window.localStorage.setItem(k, v); } catch (e) { return null; } }
+
+	/** Small reusable dialog. Returns the dialog element; call close() to remove it. */
+	function modal(ttl, html, wide) {
+		var m = document.createElement('div');
+		m.className = 'ysm ysm-modal';
+		m.innerHTML = '<div class="ysm-dialog' + (wide ? ' ysm-dialog-wide' : '') + '" role="dialog" aria-modal="true"><div class="ysm-dialog-head"><h3>' + esc(ttl) + '</h3><button class="ysm-iconbtn ysm-iconbtn-sm" data-close title="Close">' + icon('x') + '</button></div>' + html + '</div>';
+		document.body.appendChild(m);
+		m.close = function () { m.remove(); };
+		m.addEventListener('click', function (e) { if (e.target === m || e.target.closest('[data-close]')) m.close(); });
+		return m;
+	}
+
+	/* ------------------------------------------------------- CSV export */
+	function download(query, noun) {
+		toast('Preparing your file…');
+		return api('/export', { query: query }).then(function (r) {
+			var blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
+			var a = document.createElement('a');
+			a.href = URL.createObjectURL(blob);
+			a.download = r.filename;
+			document.body.appendChild(a); a.click(); a.remove();
+			setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+			toast('Downloaded ' + r.count + ' ' + noun + (r.count === 1 ? '' : 's'));
+		}).catch(function (e) { toast(e.message, 'error'); });
+	}
+	function exportOrders() {
+		var cur = state.orders.status;
+		var opts = [['month', 'This month'], ['lastmonth', 'Last month'], ['30', 'Last 30 days'], ['year', 'This year'], ['all', 'All time']];
+		var m = modal('Download orders',
+			'<p class="ysm-muted">A spreadsheet (CSV) you can open in Excel or Google Sheets.</p>' +
+			'<label class="ysm-label">Period</label><div class="ysm-chips">' + opts.map(function (o, i) { return '<button class="ysm-chip' + (i === 0 ? ' is-on' : '') + '" data-per="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div>' +
+			'<label class="ysm-label ysm-mt">Orders</label><select class="ysm-input" id="ex-status"><option value="all">All statuses</option>' +
+			Object.keys(orderLabels || {}).filter(function (k) { return k !== 'checkout-draft'; }).map(function (k) { return '<option value="' + esc(k) + '"' + (k === cur ? ' selected' : '') + '>' + esc(orderLabels[k]) + '</option>'; }).join('') + '</select>' +
+			'<div class="ysm-dialog-actions ysm-mt"><button class="ysm-btn" data-close>Cancel</button><button class="ysm-btn ysm-btn-primary" id="ex-go">' + icon('download') + ' Download</button></div>');
+		var per = 'month';
+		m.addEventListener('click', function (e) {
+			var b = e.target.closest('[data-per]');
+			if (b) { per = b.getAttribute('data-per'); $$('[data-per]', m).forEach(function (x) { x.classList.toggle('is-on', x === b); }); }
+			if (e.target.closest('#ex-go')) {
+				var q = { type: 'orders', status: $('#ex-status', m).value };
+				if (per !== 'all') { var r = presetRange(per); q.from = r.from; q.to = r.to; }
+				m.close(); download(q, 'order');
+			}
+		});
+	}
+
+	/* ------------------------------------------------- new-order alerts */
+	var alerts = { since: 0, unseen: 0, baseTitle: '', timer: null };
+	function soundOn() { return store('ysm_sound') !== 'off'; }
+	function notifyOn() { return store('ysm_notify') === 'on' && 'Notification' in window && Notification.permission === 'granted'; }
+	function chime() {
+		if (!soundOn()) return;
+		try {
+			var A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+			var ctx = chime.ctx || (chime.ctx = new A());
+			if (ctx.state === 'suspended') ctx.resume();
+			[[0, 880], [0.16, 1175], [0.32, 1568]].forEach(function (n) {
+				var o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime + n[0];
+				o.type = 'sine'; o.frequency.value = n[1];
+				g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+				o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.5);
+			});
+		} catch (e) { /* no sound available */ }
+	}
+	// Browsers only allow sound after the user has clicked something on the page.
+	document.addEventListener('click', function () { try { var A = window.AudioContext || window.webkitAudioContext; if (A && !chime.ctx) chime.ctx = new A(); if (chime.ctx && chime.ctx.state === 'suspended') chime.ctx.resume(); } catch (e) { /* ignore */ } }, true);
+
+	function setBadge(n) {
+		$$('[data-nav="orders"]').forEach(function (a) {
+			var b = a.querySelector('.ysm-navbadge');
+			if (!n) { if (b) b.remove(); return; }
+			if (!b) { b = document.createElement('b'); b.className = 'ysm-navbadge'; a.appendChild(b); }
+			b.textContent = n > 99 ? '99+' : n;
+		});
+	}
+	function showAlert(o) {
+		var box = $('.ysm-alertstack') || document.body.appendChild(Object.assign(document.createElement('div'), { className: 'ysm ysm-alertstack' }));
+		var el = document.createElement('div');
+		el.className = 'ysm-alertpop';
+		el.innerHTML = '<span class="ysm-alertpop-ic">' + icon('bag') + '</span><span class="ysm-grow"><strong>New order #' + esc(o.number) + '</strong><small>' + esc(o.customer || 'Customer') + ' · ' + money(o.total) + '</small></span><a class="ysm-btn ysm-btn-sm ysm-btn-primary" href="#/orders/' + o.id + '">Open</a><button class="ysm-iconbtn ysm-iconbtn-sm" title="Close">' + icon('x') + '</button>';
+		el.addEventListener('click', function (e) { if (e.target.closest('a, button')) { el.remove(); clearTitle(); } });
+		box.appendChild(el);
+		if (notifyOn()) {
+			try {
+				var n = new Notification('New order #' + o.number, { body: (o.customer || 'Customer') + ' · ' + (C.currency || '') + o.total, icon: C.logo || undefined, tag: 'ysm-' + o.id });
+				n.onclick = function () { window.focus(); location.hash = '#/orders/' + o.id; n.close(); };
+			} catch (e) { /* ignore */ }
+		}
+	}
+	function clearTitle() { alerts.unseen = 0; document.title = document.title.replace(/^\(\d+\) /, ''); }
+	function pollAlerts() {
+		api('/alerts/poll', { query: { since: alerts.since } }).then(function (r) {
+			setBadge(r.waiting);
+			if (alerts.since && r.items && r.items.length) {
+				chime();
+				r.items.forEach(showAlert);
+				alerts.unseen += r.items.length;
+				document.title = '(' + alerts.unseen + ') ' + document.title.replace(/^\(\d+\) /, '');
+			}
+			alerts.since = r.now || alerts.since || 0.000001;
+		}).catch(function () { /* try again next time */ });
+	}
+	window.addEventListener('focus', function () { if (document.title.indexOf('(') === 0 && !$('.ysm-alertpop')) clearTitle(); });
+	pollAlerts();
+	alerts.timer = setInterval(pollAlerts, 30000);
+
+	function alertSettings() {
+		var perm = 'Notification' in window ? Notification.permission : 'unsupported';
+		var m = modal('New-order alerts',
+			'<p class="ysm-muted">While Store Manager is open, new paid orders pop up here straight away.</p>' +
+			'<div class="ysm-setrow"><span class="ysm-grow"><strong>Play a sound</strong><small>A short chime when a new order arrives.</small></span><label class="ysm-switch"><input type="checkbox" id="al-sound"' + (soundOn() ? ' checked' : '') + '><span></span></label></div>' +
+			'<div class="ysm-setrow"><span class="ysm-grow"><strong>Desktop notifications</strong><small>' + (perm === 'denied' ? 'Blocked in this browser. Allow notifications for this website in your browser settings.' : (perm === 'unsupported' ? 'Not available in this browser.' : 'Shows a notification even when you are in another tab.')) + '</small></span>' +
+			(perm === 'unsupported' || perm === 'denied' ? '' : '<label class="ysm-switch"><input type="checkbox" id="al-notify"' + (notifyOn() ? ' checked' : '') + '><span></span></label>') + '</div>' +
+			'<button class="ysm-btn ysm-btn-sm" id="al-test">' + icon('bell') + ' Test the alert</button>' +
+			(C.canAlerts ? '<div class="ysm-sub"><div class="ysm-setrow"><span class="ysm-grow"><strong>Email new orders</strong><small>WooCommerce emails these addresses for every new order.</small></span><label class="ysm-switch"><input type="checkbox" id="al-email-on"><span></span></label></div>' +
+				'<input class="ysm-input" id="al-emails" placeholder="you@example.com, partner@example.com"><p class="ysm-hint">Separate more than one email with a comma.</p>' +
+				'<div class="ysm-dialog-actions ysm-mt"><button class="ysm-btn ysm-btn-primary" id="al-save">Save email settings</button></div></div>' : ''), true);
+		if (C.canAlerts) {
+			api('/alerts/settings').then(function (s) { $('#al-email-on', m).checked = s.emailOn; $('#al-emails', m).value = s.emails; }).catch(function () { /* ignore */ });
+		}
+		m.addEventListener('change', function (e) {
+			if (e.target.id === 'al-sound') { store('ysm_sound', e.target.checked ? 'on' : 'off'); if (e.target.checked) chime(); }
+			if (e.target.id === 'al-notify') {
+				if (!e.target.checked) { store('ysm_notify', 'off'); return; }
+				Notification.requestPermission().then(function (p) {
+					if (p === 'granted') { store('ysm_notify', 'on'); toast('Desktop notifications are on'); }
+					else { e.target.checked = false; store('ysm_notify', 'off'); toast('Notifications were not allowed in this browser.', 'error'); }
+				});
+			}
+		});
+		m.addEventListener('click', function (e) {
+			if (e.target.closest('#al-test')) { chime(); showAlert({ id: 0, number: '1234', customer: 'Test customer', total: 250 }); }
+			if (e.target.closest('#al-save')) {
+				var b = e.target.closest('#al-save'); b.disabled = true;
+				api('/alerts/settings', { method: 'POST', body: { emailOn: $('#al-email-on', m).checked, emails: $('#al-emails', m).value } })
+					.then(function () { toast('Email settings saved'); m.close(); })
+					.catch(function (er) { b.disabled = false; toast(er.message, 'error'); });
+			}
+		});
+	}
+
+	/* ---------------------------------------------------------- customers */
+	function initials(n) { var p = String(n || '?').trim().split(/\s+/); return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase(); }
+	function customersList() {
+		title('Customers');
+		var s = state.customers, my = seq;
+		view.innerHTML =
+			'<div class="ysm-toolbar"><label class="ysm-search">' + icon('search') + '<input type="search" id="c-search" placeholder="Search name, phone or email" value="' + esc(s.search) + '"></label><button class="ysm-btn" id="c-export">' + icon('download') + '<span class="ysm-hide-sm"> Export</span></button></div>' +
+			'<div class="ysm-tabs">' + [['recent', 'Most recent'], ['spent', 'Top spenders'], ['orders', 'Most orders']].map(function (t) { return '<button class="ysm-tab' + (s.sort === t[0] ? ' is-on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+			'<div class="ysm-card ysm-card-flush" id="c-list">' + spinner('Loading customers…') + '</div>';
+		$('#c-search').addEventListener('input', debounce(function () { s.search = this.value.trim(); s.page = 1; load(); }, 400));
+		view.onclick = function (e) {
+			var t = e.target.closest('[data-tab]');
+			if (t) { s.sort = t.getAttribute('data-tab'); s.page = 1; $$('.ysm-tab', view).forEach(function (b) { b.classList.toggle('is-on', b === t); }); load(); return; }
+			var p = e.target.closest('[data-page]');
+			if (p && !p.disabled) { s.page = +p.getAttribute('data-page'); load(); window.scrollTo(0, 0); return; }
+			if (e.target.closest('#c-export')) download({ type: 'customers' }, 'customer');
+		};
+		function load() {
+			var box = $('#c-list'); box.innerHTML = spinner('Loading customers…');
+			api('/customers', { query: { page: s.page, search: s.search, sort: s.sort } }).then(function (d) {
+				if (!current(my)) return;
+				box.innerHTML = (d.items.length ? '<ul class="ysm-people">' + d.items.map(function (c) {
+					return '<li><a href="#/customers/' + encodeURIComponent(c.email) + '"><span class="ysm-avatar">' + esc(initials(c.name)) + '</span><span class="ysm-grow"><strong>' + esc(c.name) + '</strong><small>' + esc([c.phone, c.city].filter(Boolean).join(' · ') || c.email) + '</small></span><span class="ysm-o-side"><b>' + money(c.spent) + '</b><small>' + c.orders + ' order' + (c.orders === 1 ? '' : 's') + ' · ' + esc(c.last) + '</small></span></a></li>';
+				}).join('') + '</ul>' : empty(s.search ? 'No customers match your search' : 'No customers yet', s.search ? '' : 'Everyone who orders from your shop will appear here.')) + pager(s.page, d.pages, d.total, d.total === 1 ? 'customer' : 'customers');
+			}).catch(function (e) { if (current(my)) box.innerHTML = empty('Could not load customers', e.message); });
+		}
+		load();
+	}
+	function customerView(email) {
+		title('Customer');
+		var my = seq;
+		view.innerHTML = spinner('Loading customer…');
+		api('/customer', { query: { email: email } }).then(function (c) {
+			if (!current(my)) return;
+			title(c.name);
+			var wa = waTo(c.phone, 'Hello ' + c.name.split(' ')[0] + ', this is ' + C.site + '.');
+			view.innerHTML =
+				'<div class="ysm-pagehead"><a href="#/customers" class="ysm-back">' + icon('back') + ' Customers</a><div class="ysm-pagehead-title"><span class="ysm-avatar ysm-avatar-lg">' + esc(initials(c.name)) + '</span><h2>' + esc(c.name) + '</h2></div><span class="ysm-muted">' + esc(c.account) + '</span></div>' +
+				'<div class="ysm-contact ysm-mb">' +
+				(c.phone ? '<a class="ysm-btn ysm-btn-sm" href="tel:' + esc(c.phone.replace(/[^\d+]/g, '')) + '">' + icon('phone') + ' Call</a>' : '') +
+				(wa ? '<a class="ysm-btn ysm-btn-sm ysm-btn-wa" href="' + esc(wa) + '" target="_blank" rel="noopener">' + icon('chat') + ' WhatsApp</a>' : '') +
+				'<a class="ysm-btn ysm-btn-sm" href="mailto:' + esc(c.email) + '">' + icon('mail') + ' Email</a></div>' +
+				'<div class="ysm-stats ysm-stats-4">' +
+				'<div class="ysm-stat"><span>Total spent</span><strong>' + money(c.spent) + '</strong></div>' +
+				'<div class="ysm-stat"><span>Orders</span><strong>' + c.orders + '</strong></div>' +
+				'<div class="ysm-stat"><span>Average order</span><strong>' + money(c.average) + '</strong></div>' +
+				'<div class="ysm-stat"><span>Customer since</span><strong class="ysm-stat-sm">' + esc(c.first) + '</strong></div></div>' +
+				'<div class="ysm-order-grid"><div><div class="ysm-card"><div class="ysm-card-head"><h3>Orders</h3><span class="ysm-muted">Last order ' + esc(c.last) + '</span></div>' + orderRows(c.list, c.labels) + '</div></div>' +
+				'<div><div class="ysm-card"><div class="ysm-card-head"><h3>Contact details</h3></div><dl class="ysm-info">' +
+				(c.phone ? '<dt>Phone</dt><dd>' + esc(c.phone) + '</dd>' : '') + '<dt>Email</dt><dd>' + esc(c.email) + '</dd>' +
+				(c.address ? '<dt>Address</dt><dd>' + esc(c.address).replace(/\n/g, '<br>') + '</dd>' : '') + '</dl></div></div></div>';
+		}).catch(function (e) { if (current(my)) fail(e); });
+	}
+
+	/* ---------------------------------------------------------- discounts */
+	function couponSummary(c) {
+		var parts = [];
+		var amt = Number(c.amount) || 0;
+		if (amt > 0) parts.push(c.type === 'percent' ? amt + '% off' : (c.type === 'fixed_product' ? money(amt) + ' off each item' : money(amt) + ' off'));
+		if (c.freeShip) parts.push(parts.length ? 'free delivery' : 'Free delivery');
+		var txt = parts.join(' + ') || 'No discount set yet';
+		if (c.minimum !== '' && c.minimum != null && Number(c.minimum) > 0) txt += ' on orders of ' + money(c.minimum) + ' or more';
+		if (c.expires) txt += ', until ' + (c.expiresText || c.expires);
+		if (c.perUser) txt += ', ' + (Number(c.perUser) === 1 ? 'once' : c.perUser + ' times') + ' per customer';
+		return txt;
+	}
+	var COUPON_STATE = { active: ['Active', 'processing'], off: ['Off', 'draft'], expired: ['Expired', 'cancelled'], used: ['Used up', 'on-hold'] };
+	function couponsList() {
+		title('Discounts');
+		var s = state.coupons, my = seq;
+		view.innerHTML =
+			'<div class="ysm-toolbar"><label class="ysm-search">' + icon('search') + '<input type="search" id="d-search" placeholder="Search discount codes" value="' + esc(s.search) + '"></label><a class="ysm-btn ysm-btn-primary" href="#/coupons/new">' + icon('plus') + ' Create discount</a></div>' +
+			'<div class="ysm-tabs">' + [['', 'All'], ['active', 'Active'], ['ended', 'Off or ended']].map(function (t) { return '<button class="ysm-tab' + (s.filter === t[0] ? ' is-on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+			'<div class="ysm-card ysm-card-flush" id="d-list">' + spinner('Loading discounts…') + '</div>';
+		$('#d-search').addEventListener('input', debounce(function () { s.search = this.value.trim(); s.page = 1; load(); }, 400));
+		view.onclick = function (e) {
+			var t = e.target.closest('[data-tab]');
+			if (t) { s.filter = t.getAttribute('data-tab'); s.page = 1; $$('.ysm-tab', view).forEach(function (b) { b.classList.toggle('is-on', b === t); }); load(); return; }
+			var p = e.target.closest('[data-page]');
+			if (p && !p.disabled) { s.page = +p.getAttribute('data-page'); load(); window.scrollTo(0, 0); }
+		};
+		function load() {
+			var box = $('#d-list'); box.innerHTML = spinner('Loading discounts…');
+			api('/coupons', { query: { page: s.page, search: s.search, filter: s.filter } }).then(function (d) {
+				if (!current(my)) return;
+				box.innerHTML = (d.items.length ? '<ul class="ysm-coupons">' + d.items.map(function (c) {
+					var st = COUPON_STATE[c.state] || COUPON_STATE.active;
+					return '<li><a href="#/coupons/' + c.id + '"><span class="ysm-code">' + esc(c.code) + '</span><span class="ysm-grow"><strong>' + esc(couponSummary(c)) + '</strong><small>Used ' + c.used + (c.limit ? ' of ' + c.limit : '') + ' time' + (c.used === 1 && !c.limit ? '' : 's') + '</small></span><span class="ysm-badge ysm-st-' + st[1] + '">' + st[0] + '</span></a></li>';
+				}).join('') + '</ul>' : empty(s.search || s.filter ? 'No discounts here' : 'No discounts yet', s.search || s.filter ? '' : 'Create a discount code to give customers money off, a percentage off or free delivery.')) + pager(s.page, d.pages, d.total, d.total === 1 ? 'discount' : 'discounts');
+			}).catch(function (e) { if (current(my)) box.innerHTML = empty('Could not load discounts', e.message); });
+		}
+		load();
+	}
+	function genCode() {
+		var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', out = '';
+		for (var i = 0; i < 8; i++) out += chars.charAt(Math.floor(Math.random() * chars.length));
+		return out;
+	}
+	function couponEdit(id) {
+		title(id ? 'Edit discount' : 'Create discount');
+		var my = seq;
+		view.innerHTML = spinner('Loading…');
+		(id ? api('/coupons/' + id) : Promise.resolve(null)).then(function (c) { if (current(my)) editor(c); }).catch(function (e) { if (current(my)) fail(e); });
+
+		function editor(c) {
+			var D = c ? Object.assign({}, c, { on: c.state !== 'off' }) : { id: 0, code: genCode(), type: 'percent', amount: '', freeShip: false, minimum: '', expires: '', limit: '', perUser: '', individual: false, noSale: false, note: '', on: true, used: 0 };
+			var dirty = false;
+			function setDirty() { if (!dirty) { dirty = true; leaveGuard = true; } }
+			var types = [['percent', '% off'], ['fixed_cart', 'Amount off']];
+			if (D.type === 'fixed_product') types.push(['fixed_product', 'Off each item']);
+			var share = function () { return 'Use code ' + D.code + ' at ' + C.site + ' for ' + couponSummary(D).replace(/^./, function (x) { return x.toLowerCase(); }) + '. ' + C.siteUrl; };
+			view.innerHTML =
+				'<div class="ysm-pagehead"><a href="#/coupons" class="ysm-back">' + icon('back') + ' Discounts</a><div class="ysm-pagehead-title"><h2>' + (D.id ? 'Discount ' + esc(D.code) : 'New discount') + '</h2>' + (D.id ? '<span class="ysm-badge ysm-st-' + (COUPON_STATE[D.state] || COUPON_STATE.active)[1] + '">' + (COUPON_STATE[D.state] || COUPON_STATE.active)[0] + '</span>' : '') + '</div>' + (D.id ? '<span class="ysm-muted">Used ' + D.used + ' time' + (D.used === 1 ? '' : 's') + '</span>' : '') + '</div>' +
+				'<div class="ysm-editor"><div class="ysm-ed-main">' +
+				'<div class="ysm-card"><label class="ysm-label" for="cp-code">Discount code</label><div class="ysm-row"><input id="cp-code" class="ysm-input ysm-input-lg ysm-mono" value="' + esc(D.code) + '" maxlength="40" autocomplete="off"><button class="ysm-btn" id="cp-gen">Generate</button></div><p class="ysm-hint">Customers type this code at checkout. Short and easy to remember works best, e.g. WELCOME10.</p></div>' +
+				'<div class="ysm-card"><div class="ysm-card-head"><h3>Discount</h3></div><div class="ysm-seg ysm-seg-' + types.length + '" id="cp-types">' + types.map(function (t) { return '<button data-type="' + t[0] + '" class="' + (D.type === t[0] ? 'is-on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+				'<label class="ysm-label ysm-mt" for="cp-amount">' + (D.type === 'percent' ? 'Percentage off' : 'Amount off') + '</label><div class="ysm-affix"><span id="cp-unit">' + (D.type === 'percent' ? '%' : esc(C.currency)) + '</span><input id="cp-amount" class="ysm-input" inputmode="decimal" value="' + esc(D.amount || '') + '" placeholder="' + (D.type === 'percent' ? 'e.g. 10' : 'e.g. 50') + '"></div>' +
+				'<label class="ysm-switch ysm-mt"><input type="checkbox" id="cp-free"' + (D.freeShip ? ' checked' : '') + '><span></span>Free delivery</label><p class="ysm-hint">Free delivery only works if your delivery settings include a "Free shipping" option that accepts coupons. Ask your web developer if you are not sure.</p></div>' +
+				'<div class="ysm-card"><div class="ysm-card-head"><h3>Rules</h3><span class="ysm-muted">All optional</span></div><div class="ysm-fields3">' +
+				'<label>Minimum order<input class="ysm-input" inputmode="decimal" id="cp-min" value="' + esc(D.minimum || '') + '" placeholder="No minimum"></label>' +
+				'<label>Ends on<input class="ysm-input" type="date" id="cp-exp" value="' + esc(D.expires || '') + '"></label>' +
+				'<label>Total uses allowed<input class="ysm-input" inputmode="numeric" id="cp-limit" value="' + esc(D.limit || '') + '" placeholder="Unlimited"></label>' +
+				'<label>Uses per customer<input class="ysm-input" inputmode="numeric" id="cp-per" value="' + esc(D.perUser || '') + '" placeholder="Unlimited"></label></div>' +
+				'<label class="ysm-switch ysm-mt"><input type="checkbox" id="cp-ind"' + (D.individual ? ' checked' : '') + '><span></span>Can’t be combined with other discount codes</label>' +
+				'<label class="ysm-switch ysm-mt"><input type="checkbox" id="cp-nosale"' + (D.noSale ? ' checked' : '') + '><span></span>Don’t apply to items already on sale</label></div>' +
+				'</div><div class="ysm-ed-side">' +
+				'<div class="ysm-card ysm-summary"><div class="ysm-card-head"><h3>Summary</h3></div><p id="cp-sum"></p><div class="ysm-row ysm-wrap"><button class="ysm-btn ysm-btn-sm" id="cp-copy">' + icon('copy') + ' Copy code</button><a class="ysm-btn ysm-btn-sm ysm-btn-wa" id="cp-wa" target="_blank" rel="noopener" href="#">' + icon('chat') + ' Share on WhatsApp</a></div></div>' +
+				'<div class="ysm-card"><div class="ysm-card-head"><h3>Status</h3></div><div class="ysm-seg"><button data-on="1" class="' + (D.on ? 'is-on' : '') + '">Active</button><button data-on="0" class="' + (!D.on ? 'is-on' : '') + '">Off</button></div><p class="ysm-hint">Turn a discount off to stop customers using it, without deleting it.</p></div>' +
+				'<div class="ysm-card"><div class="ysm-card-head"><h3>Private note</h3></div><textarea class="ysm-input" id="cp-note" rows="2" placeholder="Only you see this, e.g. Instagram giveaway">' + esc(D.note || '') + '</textarea></div>' +
+				(D.id ? '<button class="ysm-btn ysm-btn-ghost-danger ysm-btn-block" id="cp-delete">' + icon('trash') + ' Delete discount</button>' : '') +
+				'</div></div>' +
+				'<div class="ysm-savebar"><span class="ysm-muted" id="cp-state">' + (D.id ? '' : 'Not saved yet') + '</span><button class="ysm-btn ysm-btn-primary" id="cp-save">' + icon('check') + ' Save discount</button></div>';
+			function refresh() {
+				$('#cp-sum').textContent = couponSummary(D);
+				$('#cp-wa').href = 'https://wa.me/?text=' + encodeURIComponent(share());
+			}
+			refresh();
+			var map = { 'cp-amount': 'amount', 'cp-min': 'minimum', 'cp-limit': 'limit', 'cp-per': 'perUser', 'cp-note': 'note', 'cp-exp': 'expires' };
+			view.oninput = function (e) {
+				var t = e.target;
+				if (t.id === 'cp-code') { var pos = t.selectionStart; t.value = t.value.toUpperCase().replace(/\s+/g, ''); try { t.setSelectionRange(pos, pos); } catch (x) { /* ignore */ } D.code = t.value; }
+				else if (map[t.id]) { D[map[t.id]] = t.value.trim(); if (t.id === 'cp-exp') D.expiresText = ''; }
+				setDirty(); refresh();
+			};
+			view.onchange = function (e) {
+				var t = e.target;
+				if (t.id === 'cp-free') D.freeShip = t.checked;
+				else if (t.id === 'cp-ind') D.individual = t.checked;
+				else if (t.id === 'cp-nosale') D.noSale = t.checked;
+				else if (t.id === 'cp-exp') D.expires = t.value;
+				else return;
+				setDirty(); refresh();
+			};
+			view.onclick = function (e) {
+				var b;
+				if (e.target.closest('#cp-gen')) { D.code = genCode(); $('#cp-code').value = D.code; setDirty(); refresh(); return; }
+				if ((b = e.target.closest('[data-type]'))) {
+					D.type = b.getAttribute('data-type');
+					$$('#cp-types button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+					$('#cp-unit').textContent = D.type === 'percent' ? '%' : C.currency;
+					$('label[for="cp-amount"]').textContent = D.type === 'percent' ? 'Percentage off' : 'Amount off';
+					$('#cp-amount').placeholder = D.type === 'percent' ? 'e.g. 10' : 'e.g. 50';
+					setDirty(); refresh(); return;
+				}
+				if ((b = e.target.closest('[data-on]'))) { D.on = b.getAttribute('data-on') === '1'; $$('[data-on]', view).forEach(function (x) { x.classList.toggle('is-on', x === b); }); setDirty(); return; }
+				if (e.target.closest('#cp-copy')) {
+					var done = function () { toast('Code ' + D.code + ' copied'); };
+					if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(D.code).then(done, function () { toast('Copy the code: ' + D.code); });
+					else toast('Copy the code: ' + D.code);
+					return;
+				}
+				if (e.target.closest('#cp-save')) { save(); return; }
+				if (e.target.closest('#cp-delete')) {
+					ask('Delete this discount?', 'Customers will no longer be able to use the code ' + D.code + '.', 'Delete', true).then(function (yes) {
+						if (!yes) return;
+						api('/coupons/' + D.id, { method: 'DELETE' }).then(function () { leaveGuard = null; toast('Discount deleted'); location.hash = '#/coupons'; }).catch(function (er) { toast(er.message, 'error'); });
+					});
+				}
+			};
+			function num(v) { return v === '' || v == null || !isNaN(Number(v)); }
+			function save() {
+				if (!D.code) { toast('Please enter a discount code.', 'error'); $('#cp-code').focus(); return; }
+				if (!num(D.amount) || !num(D.minimum) || !/^\d*$/.test(D.limit || '') || !/^\d*$/.test(D.perUser || '')) { toast('Amounts and limits must be numbers.', 'error'); return; }
+				var btn = $('#cp-save'); btn.disabled = true; btn.classList.add('is-busy'); $('#cp-state').textContent = 'Saving…';
+				api('/coupons', { method: 'POST', body: D }).then(function (r) {
+					leaveGuard = null; dirty = false; toast('Discount saved');
+					if (!D.id) { lastHash = '#/coupons/' + r.id; history.replaceState(null, '', '#/coupons/' + r.id); }
+					editor(r);
+					$('#cp-state').textContent = 'All changes saved';
+				}).catch(function (er) { btn.disabled = false; btn.classList.remove('is-busy'); $('#cp-state').textContent = ''; toast(er.message, 'error'); });
+			}
+		}
+	}
+
+	/* --------------------------------------------------------------- help */
+	function helpView() {
+		title('Help');
+		var my = seq;
+		view.innerHTML = spinner('Loading…');
+		api('/help').then(function (d) {
+			if (!current(my)) return;
+			var wa = d.whatsapp ? 'https://wa.me/' + d.whatsapp + '?text=' + encodeURIComponent('Hello YMLK Technologies, I need help with my Store Manager for ' + C.site + '.') : '';
+			view.innerHTML =
+				'<div class="ysm-hello"><h2>Help &amp; tutorials</h2><p>Short videos that show you how to use your Store Manager, step by step.</p></div>' +
+				(d.videos.length ? '<div class="ysm-videos">' + d.videos.map(function (v) {
+					return '<div class="ysm-card ysm-video"><video src="' + esc(v.url) + '#t=0.5" controls preload="metadata" playsinline></video><strong>' + esc(v.title) + '</strong></div>';
+				}).join('') + '</div>' : '<div class="ysm-card">' + empty('No help videos yet', 'Your web developer can add short how-to videos here.') + '</div>') +
+				'<div class="ysm-card ysm-support"><span class="ysm-support-ic">' + icon('help') + '</span><span class="ysm-grow"><strong>Need help with something else?</strong><small>Your website was developed by YMLK Technologies. Get in touch and we will help.</small></span><div class="ysm-row ysm-wrap">' +
+				(wa ? '<a class="ysm-btn ysm-btn-wa" href="' + esc(wa) + '" target="_blank" rel="noopener">' + icon('chat') + ' WhatsApp us</a>' : '') +
+				'<a class="ysm-btn" href="' + esc(d.website) + '" target="_blank" rel="noopener">' + icon('globe') + ' Visit our website</a></div></div>';
+		}).catch(function (e) { if (current(my)) fail(e); });
+	}
+
+	/* ------------------------------------------------------ mobile "More" */
+	function moreMenu() {
+		var m = modal('More',
+			'<nav class="ysm-morelist">' + NAV.slice(4).map(function (n) { return '<a href="#/' + n[0] + '" data-close>' + icon(n[2]) + '<span>' + n[1] + '</span>' + icon('next') + '</a>'; }).join('') +
+			'<a href="' + esc(C.siteUrl) + '" target="_blank" rel="noopener" data-close>' + icon('globe') + '<span>View shop</span>' + icon('ext') + '</a>' +
+			'<a href="' + esc(C.logout) + '">' + icon('out') + '<span>Log out</span></a></nav>' +
+			'<p class="ysm-credit-sm">Developed by <a href="' + esc(C.credit) + '" target="_blank" rel="noopener">YMLK Technologies</a></p>');
+		m.classList.add('ysm-sheet');
+	}
+
+	document.addEventListener('click', function (e) { if (e.target.closest('[data-more]')) { e.preventDefault(); moreMenu(); } });
 
 	route();
 })();
