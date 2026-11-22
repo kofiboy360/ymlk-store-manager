@@ -2,7 +2,7 @@
 /**
  * Plugin Name: YMLK Store Manager
  * Description: A simple, fast store-management app for WooCommerce shop owners: sales overview, orders, products (with an easy options/variations builder) and inventory, all in one place.
- * Version: 1.0.4
+ * Version: 1.1.0
  * Author: YMLK Technologies
  * Author URI: https://ymlktechnologies.com
  * Requires at least: 6.2
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'YSM_VERSION', '1.0.4' );
+define( 'YSM_VERSION', '1.1.0' );
 define( 'YSM_FILE', __FILE__ );
 define( 'YSM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'YSM_URL', plugin_dir_url( __FILE__ ) );
@@ -50,6 +50,10 @@ final class YSM_Plugin {
 		add_filter( 'woocommerce_login_redirect', array( __CLASS__, 'wc_login_redirect' ), 99, 2 );
 		add_action( 'admin_init', array( __CLASS__, 'save_settings' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( __CLASS__, 'action_links' ) );
+		add_action( 'admin_bar_menu', array( __CLASS__, 'simple_mode_admin_bar' ), 9999 );
+		foreach ( array( 'load-post.php', 'load-post-new.php', 'load-edit.php' ) as $screen ) {
+			add_action( $screen, array( __CLASS__, 'simple_mode_redirect' ) );
+		}
 		YSM_REST::init();
 		YSM_Updater::init();
 	}
@@ -86,6 +90,50 @@ final class YSM_Plugin {
 			}
 		}
 		remove_submenu_page( self::PAGE, self::PAGE . '-settings' );
+	}
+
+	/** Simple mode: admin-bar links for products open Store Manager; "Edit with Elementor" is hidden. */
+	public static function simple_mode_admin_bar( $bar ) {
+		if ( ! self::simple_mode_for() ) {
+			return;
+		}
+		foreach ( array( 'elementor_edit_page', 'elementor_inspector', 'elementor-maintenance-on' ) as $node ) {
+			$bar->remove_node( $node );
+		}
+		$id   = is_admin() ? ( isset( $_GET['post'] ) ? (int) $_GET['post'] : 0 ) : get_queried_object_id(); // phpcs:ignore
+		$edit = $bar->get_node( 'edit' );
+		if ( $edit && $id && 'product' === get_post_type( $id ) ) {
+			$edit->href = self::app_url() . '#/products/' . $id;
+			$bar->add_node( (array) $edit );
+		}
+		$new = $bar->get_node( 'new-product' );
+		if ( $new ) {
+			$new->href = self::app_url() . '#/products/new';
+			$bar->add_node( (array) $new );
+		}
+	}
+
+	/** Simple mode: WooCommerce's own product screens (e.g. old bookmarks) send Shop Managers to Store Manager. */
+	public static function simple_mode_redirect() {
+		if ( ! self::simple_mode_for() || wp_doing_ajax() || ! empty( $_POST ) ) { // phpcs:ignore
+			return;
+		}
+		global $pagenow;
+		$target = '';
+		if ( 'post.php' === $pagenow && ! empty( $_GET['post'] ) ) { // phpcs:ignore
+			$id = (int) $_GET['post']; // phpcs:ignore
+			if ( 'product' === get_post_type( $id ) ) {
+				$target = '#/products/' . $id;
+			}
+		} elseif ( 'post-new.php' === $pagenow && isset( $_GET['post_type'] ) && 'product' === $_GET['post_type'] ) { // phpcs:ignore
+			$target = '#/products/new';
+		} elseif ( 'edit.php' === $pagenow && isset( $_GET['post_type'] ) && 'product' === $_GET['post_type'] ) { // phpcs:ignore
+			$target = '#/products';
+		}
+		if ( $target ) {
+			wp_safe_redirect( self::app_url() . $target );
+			exit;
+		}
 	}
 
 	public static function login_redirect( $redirect_to, $requested, $user ) {

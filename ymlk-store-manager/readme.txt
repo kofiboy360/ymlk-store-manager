@@ -3,7 +3,7 @@ Contributors: ymlktechnologies
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.4
+Stable tag: 1.1.0
 License: GPLv2 or later
 
 A simple, fast store-management app for WooCommerce shop owners.
@@ -14,6 +14,10 @@ Overview of sales, orders with one-tap status changes and WhatsApp contact, prod
 Developed by YMLK Technologies — https://ymlktechnologies.com
 
 == Changelog ==
+= 1.1.0 =
+* Product changes show on the shop straight away, also for logged-in users (clears LiteSpeed, WP Rocket, W3 Total Cache and WP Super Cache for that product).
+* Simple mode: "Edit Product" and "New Product" in the top bar open Store Manager; WooCommerce product screens redirect to Store Manager; "Edit with Elementor" is hidden for Shop Managers.
+
 = 1.0.4 =
 * Stock grid fits phone screens.
 

@@ -20,6 +20,62 @@ final class YSM_REST {
 		foreach ( array( 'woocommerce_new_order', 'woocommerce_order_status_changed', 'woocommerce_product_set_stock', 'woocommerce_variation_set_stock', 'woocommerce_order_refunded' ) as $hook ) {
 			add_action( $hook, array( __CLASS__, 'bump_cache' ) );
 		}
+		// Remember which products change, then clear their cached pages before the app gets its answer.
+		foreach ( array( 'woocommerce_new_product', 'woocommerce_update_product', 'woocommerce_new_product_variation', 'woocommerce_update_product_variation', 'woocommerce_product_set_stock', 'woocommerce_variation_set_stock', 'wp_trash_post', 'before_delete_post' ) as $hook ) {
+			add_action( $hook, array( __CLASS__, 'touched' ) );
+		}
+		add_filter( 'rest_post_dispatch', array( __CLASS__, 'flush_page_cache' ), 10, 3 );
+	}
+
+	private static $touched = array();
+
+	public static function touched( $product ) {
+		$id = is_object( $product ) ? $product->get_id() : (int) $product;
+		if ( ! $id ) {
+			return;
+		}
+		$type = get_post_type( $id );
+		if ( 'product_variation' === $type ) {
+			$id = (int) wp_get_post_parent_id( $id );
+		} elseif ( 'product' !== $type ) {
+			return;
+		}
+		if ( $id ) {
+			self::$touched[ $id ] = true;
+		}
+	}
+
+	/**
+	 * Clears the shop's page cache for products changed in Store Manager, so the owner sees the change
+	 * immediately, even while logged in (LiteSpeed keeps separate copies for logged-in users).
+	 */
+	public static function flush_page_cache( $response, $server, $request ) {
+		if ( 0 !== strpos( $request->get_route(), '/' . self::NS . '/' ) || ! self::$touched ) {
+			return $response;
+		}
+		foreach ( array_keys( self::$touched ) as $id ) {
+			clean_post_cache( $id );
+			wc_delete_product_transients( $id );
+			do_action( 'litespeed_purge_post', $id );
+			if ( function_exists( 'rocket_clean_post' ) ) {
+				rocket_clean_post( $id );
+			}
+			if ( function_exists( 'w3tc_flush_post' ) ) {
+				w3tc_flush_post( $id );
+			}
+			if ( function_exists( 'wp_cache_post_change' ) ) {
+				wp_cache_post_change( $id );
+			}
+		}
+		// Shop, category and home pages list products and prices too.
+		do_action( 'litespeed_purge', 'URL./' );
+		$shop = function_exists( 'wc_get_page_id' ) ? wc_get_page_id( 'shop' ) : 0;
+		if ( $shop > 0 ) {
+			do_action( 'litespeed_purge_post', $shop );
+		}
+		do_action( 'litespeed_purge_private_all' );
+		self::$touched = array();
+		return $response;
 	}
 
 	public static function hpos() {
