@@ -374,3 +374,10 @@ textarea.ysm-input { resize: vertical; }
 .ysm-receipt td:last-child, .ysm-receipt th:last-child { text-align: right; }
 .ysm-receipt tfoot td, .ysm-receipt tfoot th { border-bottom: 0; }
 .ysm-thanks { margin-top: 20px; text-align: center; }
+@media (max-width: 600px) {
+	.ysm-invp-panel { padding: 4px 10px 14px; }
+	.ysm-matrix { border-spacing: 3px; }
+	.ysm-matrix input { width: 46px; height: 38px; font-size: 14px; }
+	.ysm-matrix tbody th { font-size: 12px; padding-right: 4px; white-space: normal; max-width: 76px; }
+	.ysm-matrix td.is-none { width: 46px; }
+}
