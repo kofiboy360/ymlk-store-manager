@@ -1145,7 +1145,11 @@
 		if (c.freeShip) parts.push(parts.length ? 'free delivery' : 'Free delivery');
 		var txt = parts.join(' + ') || 'No discount set yet';
 		if (c.minimum !== '' && c.minimum != null && Number(c.minimum) > 0) txt += (/ off$/.test(txt) ? ' orders of ' : ' on orders of ') + money(c.minimum) + ' or more';
-		if (c.expires) txt += ', until ' + (c.expiresText || c.expires);
+		if (c.expires) {
+			var nice = c.expiresText;
+			if (!nice) { try { nice = new Date(c.expires + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { nice = c.expires; } }
+			txt += ', until ' + nice;
+		}
 		if (c.perUser) txt += ', ' + (Number(c.perUser) === 1 ? 'once' : c.perUser + ' times') + ' per customer';
 		return txt;
 	}

@@ -3,7 +3,7 @@ Contributors: ymlktechnologies
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.1
+Stable tag: 1.2.2
 License: GPLv2 or later
 
 A simple, fast store-management app for WooCommerce shop owners.
@@ -14,6 +14,9 @@ Overview of sales, orders with one-tap status changes and WhatsApp contact, prod
 Developed by YMLK Technologies — https://ymlktechnologies.com
 
 == Changelog ==
+= 1.2.2 =
+* Discounts: the end date reads naturally in the summary.
+
 = 1.2.1 =
 * Discounts: WhatsApp sharing works with ad blockers, clearer summary, phone layout.
 * CSV export works quietly on the newest PHP.
